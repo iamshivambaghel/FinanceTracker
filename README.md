@@ -7,7 +7,12 @@ plain HTML/CSS/JS, so it deploys to Vercel as a static site in one click.
 
 ## What it does
 
-- **Income, Net & Savings rate** — add your income source(s); see net cash flow
+- **Savings account balance** — set your current bank balance; Cash/UPI spends
+  and any dues you tick "paid" draw it down in real time, while **card spends
+  don't** (those are paid later via the card's statement). Top it up with
+  "Add money" when your salary lands. A baseline timestamp keeps it from
+  double-counting anything logged before you set the balance.
+- **Income, Net & Savings rate** — optional; add your income source(s) to see net cash flow
   and what % of income you keep. The **Net card is expandable** — tap it to see
   the full income-minus-outflow breakdown.
 - **12-month forecast** — planned outflow per month; bars shrink as EMIs finish,

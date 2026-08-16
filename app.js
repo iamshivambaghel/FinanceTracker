@@ -19,6 +19,9 @@ async function hydrate() {
   if (!state.transactions) state.transactions = [];
   if (!state.bucketRules) state.bucketRules = DEFAULT_BUCKET_RULES;
   if (!state.cards) state.cards = SEED.cards ? JSON.parse(JSON.stringify(SEED.cards)) : [];
+  if (state.balanceOpening === undefined) state.balanceOpening = null; // savings balance not set yet
+  if (state.balanceSince === undefined) state.balanceSince = null;
+  if (!state.deposits) state.deposits = [];
   migrateToCalendar(state);
   const periodEl = document.getElementById("stmt-period");
   if (periodEl && !periodEl.value) periodEl.value = currentMonth();
@@ -116,9 +119,10 @@ function isPaid(id) { return !!(state.paid && state.paid[paidKey(id)]); }
 function togglePaid(id) {
   if (!state.paid) state.paid = {};
   const k = paidKey(id);
-  if (state.paid[k]) delete state.paid[k]; else state.paid[k] = true;
-  // Paid state only affects the checklist and the table — skip the full
-  // re-render (charts, summaries) so ticking many boxes stays instant.
+  if (state.paid[k]) delete state.paid[k]; else state.paid[k] = Date.now(); // timestamp so the balance baseline can filter it
+  // Paid state affects the checklist, the table, and the savings balance
+  // (a paid due leaves the bank) — refresh just those, not the whole page.
+  renderSavings();
   renderThisMonth();
   renderTable();
   persist();
@@ -126,10 +130,43 @@ function togglePaid(id) {
 /* commitments actually due this month (active + not one-time-in-past) */
 function dueThisMonth() { return state.commitments.filter(it => commitmentInMonth(it, 0) > 0); }
 
+/* ---------- savings-account balance (actual money on hand) ----------
+ * available = opening balance + deposits (salary received)
+ *             − Cash/UPI spends + Cash/UPI refunds − dues marked paid
+ * Only events AFTER you set the balance count, so nothing is double-counted.
+ * Card spends never touch this — they're paid later via the card statement. */
+function balanceConfigured() { return state.balanceOpening != null; }
+function isCashTxn(t) { return (t.source || "Cash / UPI") === "Cash / UPI"; }
+function sinceTs() { return state.balanceSince || 0; }
+function depositsSince() {
+  return (state.deposits || []).reduce((s, d) => s + ((d.ts || 0) >= sinceTs() ? (Number(d.amount) || 0) : 0), 0);
+}
+function cashSince() {
+  return (state.transactions || []).reduce((s, t) => {
+    if (!isCashTxn(t) || (t.createdAt || 0) < sinceTs()) return s;
+    return s + (t.direction === "credit" ? Math.abs(t.amount) : -Math.abs(t.amount));
+  }, 0);
+}
+function paidDuesSince() {
+  if (!state.paid) return 0;
+  let sum = 0;
+  for (const [k, v] of Object.entries(state.paid)) {
+    if (typeof v !== "number" || v < sinceTs()) continue;
+    const id = k.slice(0, k.lastIndexOf("::"));
+    const it = state.commitments.find(c => c.id === id);
+    if (it) sum += it.amount;
+  }
+  return sum;
+}
+function availableBalance() {
+  return (Number(state.balanceOpening) || 0) + depositsSince() + cashSince() - paidDuesSince();
+}
+
 /* ---------- render orchestrator ---------- */
 function render() {
   renderSummary();
   renderNetDetail();
+  renderSavings();
   renderQuickChips();
   renderThisMonth();
   renderCashflow();
@@ -142,6 +179,70 @@ function render() {
   refreshCardSelect();
   renderTable();
   persist();
+}
+
+/* ---------- savings-account balance panel ---------- */
+function renderSavings() {
+  const el = document.getElementById("savings");
+  if (!el) return;
+  if (!balanceConfigured()) {
+    el.innerHTML = `
+      <p class="hint">Enter your <b>current bank/savings balance</b>. From then on, Cash/UPI spends and any dues you mark paid reduce it, and you top it up when salary arrives. (Card spends don't affect it — they're paid later via the card statement.)</p>
+      <form id="balance-set-form" class="sv-set">
+        <input id="balance-open" type="number" inputmode="decimal" placeholder="e.g. 50000" required>
+        <button class="btn-primary" type="submit">Set balance</button>
+      </form>`;
+    document.getElementById("balance-set-form").addEventListener("submit", e => {
+      e.preventDefault();
+      const v = parseFloat(document.getElementById("balance-open").value);
+      if (isNaN(v)) return;
+      state.balanceOpening = v; state.balanceSince = Date.now(); render();
+    });
+    return;
+  }
+  const avail = availableBalance();
+  const spent = cashSince();       // negative if net spend
+  const paidOut = paidDuesSince();
+  const dep = depositsSince();
+  const depList = (state.deposits || []).filter(d => (d.ts || 0) >= sinceTs());
+  el.innerHTML = `
+    <div class="sv-head">
+      <div>
+        <div class="card-label">Available now</div>
+        <div class="sv-big num ${avail < 0 ? "neg" : ""}">${INR(avail)}</div>
+      </div>
+      <div class="sv-actions">
+        <form id="deposit-form" class="sv-add">
+          <input id="dep-amt" type="number" placeholder="Add money (salary…) ₹">
+          <input id="dep-label" type="text" placeholder="label (optional)">
+          <button class="btn-primary" type="submit">Add</button>
+        </form>
+        <button id="balance-reset" class="btn-ghost" type="button">Reset balance</button>
+      </div>
+    </div>
+    <div class="sv-breakdown">
+      <span>Opening ${INR(state.balanceOpening)}</span>
+      ${dep ? `<span class="pos">+ deposits ${INR(dep)}</span>` : ""}
+      ${spent ? `<span class="${spent < 0 ? "neg" : "pos"}">${spent < 0 ? "− cash spends " + INR(-spent) : "+ refunds " + INR(spent)}</span>` : ""}
+      ${paidOut ? `<span class="neg">− dues paid ${INR(paidOut)}</span>` : ""}
+    </div>
+    ${depList.length ? `<div class="sv-deps">${depList.map(d => `<div class="sum-line"><span>${esc(d.label || "Deposit")}</span><span class="num pos">+${INR(d.amount)} <button class="del dep-del" data-id="${d.id}">✕</button></span></div>`).join("")}</div>` : ""}
+    <p class="hint">Cash/UPI spends and dues you tick “paid” draw this down. Card spends don't. When salary lands, tap <b>Add</b>.</p>`;
+  document.getElementById("deposit-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const amt = parseFloat(document.getElementById("dep-amt").value);
+    if (!amt) return;
+    state.deposits.push({ id: uid(), amount: Math.abs(amt), label: document.getElementById("dep-label").value.trim(), ts: Date.now() });
+    render();
+  });
+  document.querySelectorAll(".dep-del").forEach(b => b.onclick = () => {
+    state.deposits = state.deposits.filter(d => d.id !== b.dataset.id); render();
+  });
+  document.getElementById("balance-reset").onclick = () => {
+    if (confirm("Reset the savings balance? You'll re-enter your current balance and the running total starts fresh from now.")) {
+      state.balanceOpening = null; state.balanceSince = null; render();
+    }
+  };
 }
 
 /* ---------- "This month" dues checklist ---------- */
@@ -239,6 +340,7 @@ function renderQuickReview(parsed) {
       category: document.getElementById("q-cat").value,
       source: card ? card.name : "Cash / UPI",
       period: state.anchorMonth,
+      createdAt: Date.now(),
     });
     out.innerHTML = `<div class="ok">Added ✓</div>`;
     document.getElementById("quick-input").value = "";
@@ -734,6 +836,7 @@ function renderImportReview() {
     pendingImport.forEach(t => state.transactions.push({
       id: uid(), date: t.date, merchant: t.description, description: t.description,
       amount: Math.abs(t.amount), direction: t.direction, category: t.category, source, period,
+      createdAt: Date.now(),
     }));
     pendingImport = null;
     document.getElementById("stmt-text").value = "";

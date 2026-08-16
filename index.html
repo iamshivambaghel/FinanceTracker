@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinanceTracker</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">₹</span>
+      <div>
+        <h1>FinanceTracker</h1>
+        <p class="tagline">Your EMIs, loans & expenses — all in one dashboard</p>
+      </div>
+    </div>
+    <button id="reset-btn" class="btn-ghost" title="Reload the original seeded data">Reset data</button>
+  </header>
+
+  <main>
+    <!-- Summary cards -->
+    <section id="summary" class="summary-grid"></section>
+
+    <div class="two-col">
+      <!-- Projection -->
+      <section class="panel">
+        <h2>12-month outflow forecast</h2>
+        <div id="projection"></div>
+      </section>
+
+      <!-- Breakdown -->
+      <section class="panel">
+        <h2>This month by card / source</h2>
+        <div id="breakdown"></div>
+      </section>
+    </div>
+
+    <!-- Capture from message -->
+    <section class="panel">
+      <h2>📩 Capture a transaction from a message</h2>
+      <p class="hint">Paste a bank SMS or iMessage transaction alert. It'll pull out the amount, merchant, and card — you confirm, then it's added.</p>
+      <textarea id="msg-input" rows="3" placeholder="e.g.  Rs 7000.00 spent on SBI Credit Card XX5678 at ADIDAS on 15-Aug-26. Avl limit ..."></textarea>
+      <button id="parse-btn" class="btn-primary">Parse message</button>
+      <div id="parse-result"></div>
+    </section>
+
+    <!-- Itemized table -->
+    <section class="panel">
+      <h2>All commitments & transactions</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Item</th><th>Source</th><th>Type</th><th class="num">This month</th><th>Schedule</th><th></th></tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Manual add -->
+    <section class="panel">
+      <h2>Add a commitment manually</h2>
+      <form id="manual-form" class="manual-form">
+        <label>Name <input name="name" type="text" placeholder="e.g. Phone EMI" required></label>
+        <label>Source <input name="source" type="text" placeholder="e.g. HDFC"></label>
+        <label>Category <input name="category" type="text" placeholder="e.g. Shopping"></label>
+        <label>Amount ₹ <input name="amount" type="number" placeholder="5000" required></label>
+        <label>Type
+          <select name="kind">
+            <option value="emi">EMI (repeats N months)</option>
+            <option value="fixed">Fixed (every month)</option>
+            <option value="onetime">One-time (this month)</option>
+          </select>
+        </label>
+        <label id="months-wrap">Months remaining <input name="months" type="number" value="6" min="1"></label>
+        <button type="submit" class="btn-primary">Add</button>
+      </form>
+    </section>
+
+    <footer class="foot">
+      <p>Data is stored locally in your browser (localStorage) — nothing is sent anywhere. Seed data lives in <code>data.js</code>.</p>
+    </footer>
+  </main>
+
+  <script src="data.js"></script>
+  <script src="parser.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

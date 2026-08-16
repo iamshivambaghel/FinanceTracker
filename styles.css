@@ -158,3 +158,62 @@ label input, label select { margin-top: 4px; }
 
 .foot { color: var(--muted); font-size: 12px; text-align: center; margin-top: 30px; }
 code { background: var(--panel-2); padding: 2px 6px; border-radius: 5px; font-size: 12px; }
+
+/* account badge / mode pill */
+#account-badge { display: inline-flex; align-items: center; gap: 8px; }
+.mode-pill { font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 20px; padding: 4px 11px; }
+.mode-pill.cloud { color: var(--accent); border-color: var(--accent); }
+
+/* auth gate */
+.auth-gate { min-height: 70vh; display: grid; place-items: center; padding: 24px; }
+.auth-card { background: var(--panel); border: 1px solid var(--border); border-radius: 18px; padding: 34px; max-width: 380px; text-align: center; box-shadow: var(--shadow); }
+.auth-card .logo.big { width: 58px; height: 58px; border-radius: 15px; font-size: 30px; margin: 0 auto 14px; }
+.auth-card h2 { margin: 0 0 8px; }
+.auth-card input { margin: 8px 0 12px; }
+
+/* expandable net card */
+.card.expandable { cursor: pointer; user-select: none; }
+.card.expandable:hover { border-color: var(--accent); }
+.net-detail { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; margin: -8px 0 20px; box-shadow: var(--shadow); }
+.nd-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.nd-row:last-child { border-bottom: none; }
+.nd-total { font-weight: 700; border-top: 2px solid var(--border); margin-top: 4px; }
+.num.pos { color: var(--credit); } .num.neg { color: var(--danger); }
+
+/* category dots */
+.bd-name .dot, .cf-legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 7px; vertical-align: middle; }
+.pctval { color: var(--muted); font-size: 11px; margin-left: 4px; }
+.seg-spend { background: #f0883e; }
+.cf-legend i.seg-spend { background: #f0883e; }
+
+/* EMI payoff */
+.pay-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+.pay-big { font-size: 21px; font-weight: 700; letter-spacing: -0.4px; margin-top: 3px; }
+.pay-row { display: grid; grid-template-columns: 160px 1fr 120px; align-items: center; gap: 14px; margin-bottom: 12px; }
+.pay-name { font-size: 13.5px; display: flex; flex-direction: column; }
+.pay-src { color: var(--muted); font-size: 11px; }
+.pay-track { position: relative; background: var(--panel-2); border-radius: 7px; height: 26px; display: flex; align-items: center; }
+.pay-bar { height: 26px; border-radius: 7px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); display: flex; align-items: center; min-width: 54px; }
+.pay-bar-lbl { color: #fff; font-size: 11px; padding-left: 9px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pay-end { position: absolute; right: 9px; font-size: 11px; color: var(--muted); }
+.pay-total { text-align: right; font-size: 14px; font-weight: 600; display: flex; flex-direction: column; }
+.pay-sub { color: var(--muted); font-size: 11px; font-weight: 400; }
+@media (max-width: 640px) { .pay-row { grid-template-columns: 110px 1fr 84px; } .pay-summary { grid-template-columns: 1fr; } }
+
+/* statement import */
+.import-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.import-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+.import-actions .or { color: var(--muted); font-size: 13px; }
+.paste-details summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+.paste-details textarea { margin-top: 10px; }
+.verify-bar { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; font-size: 13px; margin: 12px 0; }
+.ok-inline { color: var(--credit); font-weight: 600; }
+.warn-inline { color: var(--warn); font-weight: 600; }
+.mut { color: var(--muted); }
+.import-table input, .import-table select { padding: 5px 7px; font-size: 12.5px; }
+.import-table .num-in { max-width: 100px; }
+.import-table td { padding: 6px 8px; }
+
+/* backup */
+.backup-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.file-label { cursor: pointer; display: inline-flex; align-items: center; }

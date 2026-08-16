@@ -1,71 +1,88 @@
 # FinanceTracker
 
-A zero-dependency personal finance dashboard to track all your EMIs, loans,
-fixed monthly expenses, and one-time purchases in one place — with a
-**transaction-message parser** that turns a pasted bank SMS / iMessage alert
-into a recorded expense.
+A personal finance dashboard for your EMIs, loans, income, and card spending —
+with **credit-card statement import** (PDF → verified, auto-bucketed
+transactions) and optional **cloud sync across devices**. No build step; it's
+plain HTML/CSS/JS, so it deploys to Vercel as a static site in one click.
 
-## Open it
+## What it does
 
-No build step, no server, no installs. Just open **`index.html`** in any
-browser (double-click it, or drag it into a browser tab).
+- **Income, Net & Savings rate** — add your income source(s); see net cash flow
+  and what % of income you keep. The **Net card is expandable** — tap it to see
+  the full income-minus-outflow breakdown.
+- **12-month forecast** — planned outflow per month; bars shrink as EMIs finish,
+  with an income reference line (red bars = months you overspend).
+- **Where your money goes** — spending grouped into categories (Shopping, Loans,
+  Family, Travel, Food…), combining commitments and imported card spends.
+- **EMI payoff timeline** — every active EMI as a bar running to its final
+  payment, plus total EMI debt remaining and your debt-free date.
+- **Statement import** — upload a card statement PDF (or paste its lines); each
+  transaction is auto-bucketed and shown for review, reconciled against the
+  stated total, with duplicate detection — nothing saves until you confirm.
+- **Backup & restore** — export/import your whole dataset as JSON any time.
 
-Your data is stored in the browser's `localStorage` — nothing leaves your
-machine.
+## Run it locally
 
-## What it shows
+Open **`index.html`** in a browser for the basic dashboard. For statement PDF
+parsing and cloud sync (which load libraries over the network) serve it over
+http instead of `file://`:
 
-- **Income, Net & Savings rate** — add your monthly income source(s) and the
-  dashboard shows your net cash flow (surplus/shortfall) and what % of income
-  you keep. An income-vs-outflow bar breaks spending into fixed / EMI / one-time.
-- **Due this month** — your total outflow for the current month.
-- **12-month forecast** — a bar chart of what you'll pay each month; the bars
-  shrink automatically as EMIs finish.
-- **By card / source** — how much each card (ICICI, IDFC, SBI, HDFC…) and each
-  fixed expense costs you this month.
-- **Itemized table** — every commitment, its type, this-month amount, and when
-  each EMI ends.
-
-## Capturing transactions from a message
-
-Paste a bank alert into the **"Capture a transaction from a message"** box, e.g.:
-
-```
-Rs 7000.00 spent on SBI Credit Card XX5678 at ADIDAS on 15-Aug-26.
+```bash
+npx serve .        # then open the printed http://localhost:3000
 ```
 
-The parser extracts the **amount, merchant, card, direction, and last-4**. You
-confirm (and fix anything it got wrong), then it's added to the dashboard.
+## Deploy to Vercel (recommended — makes storage durable)
 
-## Your seeded data
+1. Push this repo to GitHub (already done on your branch).
+2. In Vercel: **Add New → Project → import this repo**. No framework, no build
+   command — it's static. Click **Deploy**.
+3. Open your new URL. Data now persists across refreshes on your own domain.
 
-`data.js` is pre-loaded with your commitments (August 2026 anchor):
+That alone gives you a private, always-available tracker using this-browser
+storage. To also sync across phone + laptop, add cloud mode below.
 
-| Type | Items |
-|------|-------|
-| **EMIs** | ICICI AC (₹5k×6), ICICI health insurance (₹1.4k×3), IDFC car insurance (₹1.5k×10), IDFC flight (₹2k×6), HDFC skin care (₹6k×3) |
-| **One-time this month** | ICICI H&M (₹5k), IDFC First Select final installment (₹13.7k), SBI bag/Adidas/H&M (₹9.5k) |
-| **Fixed monthly** | Education loan (₹30k), car loan (₹10k), rent+cook (₹20k), NPS (₹5k), money home (₹20k) |
+## Cloud sync across devices (Supabase — free)
 
-Edit `data.js` to change the starting values, or use the in-app "Reset data"
-button to reload it.
+1. Create a free project at [supabase.com](https://supabase.com).
+2. **SQL Editor → New query** → paste all of [`supabase/schema.sql`](supabase/schema.sql) → **Run**.
+3. **Project Settings → API** → copy the **Project URL** and the **anon public key**.
+4. Paste both into [`config.js`](config.js):
+   ```js
+   window.FT_CONFIG = {
+     SUPABASE_URL: "https://YOURPROJECT.supabase.co",
+     SUPABASE_ANON_KEY: "eyJhbGc...your-anon-key...",
+   };
+   ```
+5. In Supabase **Authentication → URL Configuration**, add your Vercel URL to
+   the allowed redirect URLs (so the email magic link returns to your app).
+6. Commit & redeploy. The app now asks for your email, sends a one-tap magic
+   link, and syncs your data to every device you sign in on.
 
-## About automatic iMessage capture
+The anon key is designed to be public; Row Level Security (in the schema) means
+each user can only ever touch their own row.
 
-Reading iMessage **automatically** requires a script running on your own Mac —
-iMessages live in an encrypted local database (`~/Library/Messages/chat.db`)
-that only your Apple device can read, with Full Disk Access granted. There is
-no cloud API for it. A small companion script on your Mac could poll that
-database for bank alerts and POST them into a hosted version of this app; the
-in-app parser here is the same logic that would power it. For now, paste-to-capture
-gives you the same result with two clicks and no security trade-offs.
+## About statement PDFs
+
+Bank PDF layouts vary and some are password-protected (you'll be prompted for
+the password). Parsing is therefore **best-effort with a mandatory review step**
+— you see and can edit every parsed row, its bucket, and direction, and the
+importer reconciles the debit total against the figure you enter before saving.
+If a particular bank's PDF doesn't parse cleanly, paste its transaction lines
+into the text box — that path works for any format.
+
+Customise the category buckets by editing `DEFAULT_BUCKET_RULES` in
+[`statements.js`](statements.js).
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `index.html` | Layout |
-| `styles.css` | Dark dashboard theme |
-| `data.js` | Your seeded commitments (edit here) |
-| `parser.js` | Bank-message → structured transaction |
-| `app.js` | State, projection engine, rendering |
+| `index.html` / `styles.css` | UI and theme (light + dark) |
+| `config.js` | Supabase keys (blank = local mode) |
+| `data.js` | Your seeded commitments & income |
+| `parser.js` | Single bank-alert message → transaction |
+| `statements.js` | PDF text extraction, statement parsing, buckets, verification |
+| `store.js` | Persistence + auth (local / Supabase) |
+| `app.js` | State, projections, rendering, import flow |
+| `supabase/schema.sql` | Database table + Row Level Security |
+| `vercel.json` | Static hosting config |

@@ -12,59 +12,89 @@
       <span class="logo">₹</span>
       <div>
         <h1>FinanceTracker</h1>
-        <p class="tagline">Your EMIs, loans & expenses — all in one dashboard</p>
+        <p class="tagline">Income, EMIs, loans, statements &amp; spend — in one dashboard</p>
       </div>
     </div>
-    <button id="reset-btn" class="btn-ghost" title="Reload the original seeded data">Reset data</button>
+    <div class="top-actions">
+      <span id="account-badge"></span>
+      <button id="theme-btn" class="btn-ghost" title="Toggle light / dark">◐ Theme</button>
+    </div>
   </header>
 
-  <main>
-    <!-- Summary cards -->
-    <section id="summary" class="summary-grid"></section>
+  <!-- Cloud login gate (only shown in cloud mode when signed out) -->
+  <section id="auth-gate" class="auth-gate" style="display:none">
+    <div class="auth-card">
+      <div class="logo big">₹</div>
+      <h2>Sign in to sync</h2>
+      <p class="hint">Enter your email — we'll send a one-tap magic link. Your data then follows you across every device.</p>
+      <input id="login-email" type="email" placeholder="you@email.com" />
+      <button id="login-btn" class="btn-primary">Send magic link</button>
+      <p id="login-status" class="hint"></p>
+    </div>
+  </section>
 
-    <!-- Income vs outflow -->
+  <main id="app">
+    <section id="summary" class="summary-grid"></section>
+    <section id="net-detail" class="net-detail" style="display:none"></section>
+
     <section class="panel">
-      <h2>💰 Income vs outflow & savings</h2>
+      <h2>💰 Income vs outflow &amp; savings</h2>
       <div id="cashflow"></div>
     </section>
 
     <div class="two-col">
-      <!-- Projection -->
       <section class="panel">
         <h2>12-month outflow forecast</h2>
         <div id="projection"></div>
       </section>
-
-      <!-- Breakdown -->
       <section class="panel">
-        <h2>This month by card / source</h2>
-        <div id="breakdown"></div>
+        <h2>Where your money goes (by category)</h2>
+        <div id="categories"></div>
       </section>
     </div>
 
-    <!-- Capture from message -->
     <section class="panel">
-      <h2>📩 Capture a transaction from a message</h2>
-      <p class="hint">Paste a bank SMS or iMessage transaction alert. It'll pull out the amount, merchant, and card — you confirm, then it's added.</p>
-      <textarea id="msg-input" rows="3" placeholder="e.g.  Rs 7000.00 spent on SBI Credit Card XX5678 at ADIDAS on 15-Aug-26. Avl limit ..."></textarea>
-      <button id="parse-btn" class="btn-primary">Parse message</button>
-      <div id="parse-result"></div>
+      <h2>This month by card / source</h2>
+      <div id="breakdown"></div>
     </section>
 
-    <!-- Itemized table -->
     <section class="panel">
-      <h2>All commitments & transactions</h2>
+      <h2>🏁 EMI payoff timeline</h2>
+      <div id="payoff"></div>
+    </section>
+
+    <section class="panel">
+      <h2>📄 Import a credit-card statement</h2>
+      <p class="hint">Upload the statement PDF (or paste its transaction lines). Every row is auto-bucketed and shown for your review — nothing is saved until you confirm. Optionally enter the statement's total to auto-verify the parse.</p>
+      <div class="import-controls">
+        <label>Statement PDF <input id="stmt-file" type="file" accept="application/pdf,.pdf"></label>
+        <label>Which card? <input id="stmt-source" type="text" placeholder="e.g. ICICI Credit Card"></label>
+        <label>Statement period <input id="stmt-period" type="month" value="2026-08"></label>
+        <label>Total amount due (₹, optional) <input id="stmt-total" type="number" placeholder="reconcile against this"></label>
+      </div>
+      <div class="import-actions">
+        <button id="stmt-parse-file" class="btn-primary">Parse PDF</button>
+        <span class="or">or</span>
+        <details class="paste-details">
+          <summary>paste text instead</summary>
+          <textarea id="stmt-text" rows="4" placeholder="Paste transaction lines, e.g.&#10;15/08/2026  AMAZON INDIA  2,499.00&#10;16/08/2026  SWIGGY  540.50"></textarea>
+          <button id="stmt-parse-text" class="btn-ghost">Parse pasted text</button>
+        </details>
+      </div>
+      <p id="import-status" class="hint"></p>
+      <div id="import-review"></div>
+    </section>
+
+    <section class="panel">
+      <h2>All commitments &amp; recorded spends</h2>
       <div class="table-wrap">
         <table>
-          <thead>
-            <tr><th>Item</th><th>Source</th><th>Type</th><th class="num">This month</th><th>Schedule</th><th></th></tr>
-          </thead>
+          <thead><tr><th>Item</th><th>Source</th><th>Type</th><th class="num">Amount</th><th>Schedule / date</th><th></th></tr></thead>
           <tbody id="table-body"></tbody>
         </table>
       </div>
     </section>
 
-    <!-- Manual add -->
     <section class="panel">
       <h2>Add a commitment manually</h2>
       <form id="manual-form" class="manual-form">
@@ -84,13 +114,25 @@
       </form>
     </section>
 
+    <section class="panel backup-panel">
+      <h2>Backup &amp; restore</h2>
+      <p class="hint">Your data lives in your browser (and in the cloud when signed in). Export a copy any time, or restore from one.</p>
+      <div class="backup-actions">
+        <button id="export-btn" class="btn-ghost">⬇ Export backup (JSON)</button>
+        <label class="btn-ghost file-label">⬆ Import backup <input id="import-file" type="file" accept="application/json,.json" hidden></label>
+      </div>
+    </section>
+
     <footer class="foot">
-      <p>Data is stored locally in your browser (localStorage) — nothing is sent anywhere. Seed data lives in <code>data.js</code>.</p>
+      <p>PDF parsing is best-effort — always review the rows before importing. Set up cloud sync in <code>config.js</code>.</p>
     </footer>
   </main>
 
+  <script src="config.js"></script>
   <script src="data.js"></script>
   <script src="parser.js"></script>
+  <script src="statements.js"></script>
+  <script src="store.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -28,6 +28,9 @@ plain HTML/CSS/JS, so it deploys to Vercel as a static site in one click.
   for the amount if it can't find one, and records it in one tap.
 - **"This month" checklist** — a compact top view of everything due this month
   with paid checkboxes and a progress bar.
+- **Month-end summary** — a collapsible recap for any month: income, total
+  outflow, saved/overspent, savings rate, where the money went, biggest items,
+  dues cleared, and a vs-previous-month delta, with a one-tap "copy text recap".
 - **Monthly paid checkoff** — tick each EMI/fixed due as you actually pay it;
   a progress line shows "paid ₹X of ₹Y this month", and ticks reset every new
   month so it doubles as your monthly bill checklist.

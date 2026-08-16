@@ -91,6 +91,14 @@ function commitmentInMonth(item, m) {
   return 0;
 }
 function monthCommitments(m) { return state.commitments.reduce((s, it) => s + commitmentInMonth(it, m), 0); }
+/* commitment amount in an absolute month "YYYY-MM" (for the month-end summary,
+   which can look at any month). EMI counts through its endMonth. */
+function commitmentInAbsMonth(it, ym) {
+  if (it.kind === "fixed") return it.amount;
+  if (it.kind === "onetime") return it.month === ym ? it.amount : 0;
+  if (it.kind === "emi") return (it.endMonth && ym <= it.endMonth) ? it.amount : 0;
+  return 0;
+}
 function totalIncome() { return (state.income || []).reduce((s, i) => s + (Number(i.amount) || 0), 0); }
 
 /* recorded spends (from statements / captures) for a given period */
@@ -128,6 +136,7 @@ function render() {
   renderProjection();
   renderCategories();
   renderPayoff();
+  renderMonthSummary();
   renderBreakdown();
   renderCards();
   refreshCardSelect();
@@ -459,6 +468,102 @@ function renderPayoff() {
     <p class="hint">Each bar runs from this month to that EMI's final payment. Shortest-remaining first.</p>`;
 }
 
+/* ---------- month-end summary ---------- */
+let lastRecapText = "";
+function monthOptions() {
+  const set = new Set([state.anchorMonth]);
+  for (let i = 1; i <= 11; i++) set.add(addMonths(state.anchorMonth, -i));
+  (state.transactions || []).forEach(t => { if (t.period) set.add(t.period); });
+  return [...set].sort().reverse();
+}
+function renderMonthSummary() {
+  const host = document.getElementById("month-summary");
+  if (!host) return;
+  const sel = document.getElementById("summary-month");
+  if (sel) {
+    const cur = sel.value || state.anchorMonth;
+    sel.innerHTML = monthOptions().map(m => `<option value="${m}">${ymLabel(m)}${m === state.anchorMonth ? " (this month)" : ""}</option>`).join("");
+    sel.value = cur;
+    if (!sel.dataset.init) { sel.onchange = renderMonthSummary; sel.dataset.init = "1"; }
+  }
+  const P = (sel && sel.value) || state.anchorMonth;
+  const isCurrent = P === state.anchorMonth;
+
+  const income = totalIncome();
+  const commitDue = state.commitments.reduce((s, it) => s + commitmentInAbsMonth(it, P), 0);
+  const spends = spendSum(P);
+  const outflow = commitDue + spends;
+  const net = income - outflow;
+  const rate = income > 0 ? (net / income) * 100 : null;
+
+  const dueItems = state.commitments.filter(it => commitmentInAbsMonth(it, P) > 0);
+  const dueTotal = dueItems.reduce((s, it) => s + commitmentInAbsMonth(it, P), 0);
+  const paidTotal = dueItems.filter(it => !!(state.paid && state.paid[it.id + "::" + P]))
+    .reduce((s, it) => s + commitmentInAbsMonth(it, P), 0);
+
+  const cats = {};
+  state.commitments.forEach(it => { const v = commitmentInAbsMonth(it, P); if (v > 0) cats[it.category] = (cats[it.category] || 0) + v; });
+  txnsForPeriod(P).forEach(t => { if (t.direction === "credit") return; cats[t.category || "Other"] = (cats[t.category || "Other"] || 0) + Math.abs(t.amount); });
+  const catRows = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+
+  const items = [];
+  state.commitments.forEach(it => { const v = commitmentInAbsMonth(it, P); if (v > 0) items.push({ name: it.name, amt: v }); });
+  txnsForPeriod(P).forEach(t => { if (t.direction !== "credit") items.push({ name: t.merchant || t.description || "Spend", amt: Math.abs(t.amount) }); });
+  const top = items.sort((a, b) => b.amt - a.amt).slice(0, 5);
+
+  const prevSpend = spendSum(addMonths(P, -1));
+  const dSpend = spends - prevSpend;
+  const spendCount = txnsForPeriod(P).filter(t => t.direction !== "credit").length;
+
+  const tile = (label, value, cls) => `<div class="sum-tile"><div class="card-label">${label}</div><div class="pay-big num ${cls || ""}">${value}</div></div>`;
+  const catMax = catRows.length ? catRows[0][1] : 1;
+
+  host.innerHTML = `
+    <div class="sum-tiles">
+      ${tile("Income", income > 0 ? INR(income) : "—")}
+      ${tile("Total outflow", INR(outflow))}
+      ${tile(net >= 0 ? "Saved" : "Overspent", (net >= 0 ? "+" : "−") + INR(Math.abs(net)), net >= 0 ? "pos" : "neg")}
+      ${tile("Savings rate", rate == null ? "—" : rate.toFixed(0) + "%", rate == null ? "" : rate >= 0 ? "pos" : "neg")}
+    </div>
+    <div class="sum-grid">
+      <div>
+        <div class="sum-h">Where it went</div>
+        ${catRows.map(([c, v], i) => `<div class="bd-row">
+          <div class="bd-name"><i class="dot" style="background:${CAT_COLORS[i % CAT_COLORS.length]}"></i>${esc(c)}</div>
+          <div class="bd-track"><div class="bd-fill" style="width:${(v / catMax * 100).toFixed(1)}%;background:${CAT_COLORS[i % CAT_COLORS.length]}"></div></div>
+          <div class="bd-val num">${INR(v)}</div></div>`).join("") || `<p class="hint">Nothing recorded.</p>`}
+      </div>
+      <div>
+        <div class="sum-h">Biggest items</div>
+        ${top.map(t => `<div class="sum-line"><span>${esc(t.name)}</span><span class="num">${INR(t.amt)}</span></div>`).join("") || `<p class="hint">Nothing recorded.</p>`}
+        <div class="sum-h" style="margin-top:14px">Dues cleared</div>
+        <div class="sum-line"><span>${dueItems.filter(it => !!(state.paid && state.paid[it.id + "::" + P])).length} of ${dueItems.length} paid</span><span class="num">${INR(paidTotal)} / ${INR(dueTotal)}</span></div>
+        <div class="sum-line"><span>Logged spends</span><span class="num">${spendCount} · ${INR(spends)}</span></div>
+        <div class="sum-line"><span>vs previous month spends</span><span class="num ${dSpend > 0 ? "neg" : "pos"}">${dSpend >= 0 ? "+" : "−"}${INR(Math.abs(dSpend))}</span></div>
+      </div>
+    </div>
+    ${isCurrent ? "" : `<p class="hint">Past-month commitments assume items currently active; logged spends are exact for that month.</p>`}`;
+
+  lastRecapText = buildRecapText(P, { income, outflow, net, rate, catRows, top, paidTotal, dueTotal, dueItems, spends, spendCount, dSpend });
+}
+function buildRecapText(P, d) {
+  const L = [];
+  L.push(`FinanceTracker — ${ymLabel(P)} summary`);
+  L.push(`Income: ${d.income > 0 ? INR(d.income) : "—"}`);
+  L.push(`Total outflow: ${INR(d.outflow)}`);
+  L.push(`${d.net >= 0 ? "Saved" : "Overspent"}: ${(d.net >= 0 ? "+" : "-") + INR(Math.abs(d.net))}${d.rate == null ? "" : " (" + d.rate.toFixed(0) + "% savings rate)"}`);
+  L.push("");
+  L.push("Where it went:");
+  d.catRows.forEach(([c, v]) => L.push(`  ${c}: ${INR(v)}`));
+  L.push("");
+  L.push("Biggest items:");
+  d.top.forEach(t => L.push(`  ${t.name}: ${INR(t.amt)}`));
+  L.push("");
+  L.push(`Dues cleared: ${INR(d.paidTotal)} of ${INR(d.dueTotal)}`);
+  L.push(`Logged spends: ${d.spendCount} totalling ${INR(d.spends)} (${d.dSpend >= 0 ? "+" : "-"}${INR(Math.abs(d.dSpend))} vs prev month)`);
+  return L.join("\n");
+}
+
 /* ---------- by card ---------- */
 function renderBreakdown() {
   const bySource = {};
@@ -692,6 +797,12 @@ function wireStatic() {
     document.getElementById("months-wrap").style.display = e.target.value === "emi" ? "block" : "none";
   });
   document.getElementById("months-wrap").style.display = "none";
+  document.getElementById("copy-recap").onclick = async () => {
+    const btn = document.getElementById("copy-recap");
+    try { await navigator.clipboard.writeText(lastRecapText); btn.textContent = "Copied ✓"; }
+    catch (_) { btn.textContent = "Copy failed"; }
+    setTimeout(() => { btn.textContent = "Copy text recap"; }, 1800);
+  };
   document.getElementById("export-btn").onclick = exportBackup;
   document.getElementById("import-file").addEventListener("change", importBackup);
   const savedTheme = localStorage.getItem("ft.theme");

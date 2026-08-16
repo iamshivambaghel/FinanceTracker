@@ -116,6 +116,7 @@ function dueThisMonth() { return state.commitments.filter(it => commitmentInMont
 function render() {
   renderSummary();
   renderNetDetail();
+  renderQuickChips();
   renderThisMonth();
   renderCashflow();
   renderProjection();
@@ -162,6 +163,21 @@ function renderThisMonth() {
 }
 
 /* ---------- quick add ---------- */
+const CAT_EMOJI = {
+  "Food & Dining": "🍽️", "Fuel": "⛽", "Groceries": "🛒", "Travel": "🚕",
+  "Shopping": "🛍️", "Bills & Utilities": "💡", "Entertainment": "🎬", "Health": "💊",
+  "Insurance": "🛡️", "Loan / EMI": "🏦", "Family / Transfer": "👪", "Other": "🔖",
+};
+function renderQuickChips() {
+  const el = document.getElementById("quick-chips");
+  if (!el) return;
+  const cats = [...state.bucketRules.map(r => r.category), "Other"];
+  el.innerHTML = cats.map(c => `<button type="button" class="qchip" data-cat="${c}">${CAT_EMOJI[c] || "🔖"} ${c}</button>`).join("");
+  el.querySelectorAll(".qchip").forEach(b => b.onclick = () => {
+    document.getElementById("quick-input").value = "";
+    renderQuickReview({ amount: null, description: b.dataset.cat, category: b.dataset.cat, direction: "debit", cardId: null, raw: "" });
+  });
+}
 function handleQuickAdd() {
   const input = document.getElementById("quick-input");
   const parsed = parseQuickSpend(input.value, state.cards, state.bucketRules);
@@ -190,6 +206,8 @@ function renderQuickReview(parsed) {
       <button id="q-save" class="btn-primary">Save spend</button>
       <button id="q-cancel" class="btn-ghost">Cancel</button>
     </div>`;
+  const amtEl = document.getElementById("q-amount");
+  if (amountMissing && amtEl) amtEl.focus();
   document.getElementById("q-cancel").onclick = () => { out.innerHTML = ""; document.getElementById("quick-input").value = ""; };
   document.getElementById("q-save").onclick = () => {
     const amt = parseFloat(document.getElementById("q-amount").value);

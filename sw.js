@@ -9,7 +9,7 @@
  *
  * Bump CACHE to force every client to refetch on the next visit.
  */
-const CACHE = "financetracker-v2";
+const CACHE = "financetracker-v3";
 const ASSETS = [
   "./styles.css", "./config.js", "./data.js", "./parser.js",
   "./statements.js", "./store.js", "./app.js", "./manifest.webmanifest",
@@ -62,13 +62,16 @@ self.addEventListener("fetch", e => {
     return;
   }
 
-  // Static assets: cache-first, refresh in background.
+  // Same-origin assets: network-first (so scripts/styles are never stale when
+  // online), falling back to cache only when offline. This prevents a fresh
+  // index.html from ever pairing with a stale app.js.
   e.respondWith((async () => {
-    const cached = await caches.match(req);
-    const network = fetch(req).then(res => {
-      if (res && res.status === 200) caches.open(CACHE).then(c => c.put(req, res.clone()));
+    try {
+      const res = await fetch(req);
+      if (res && res.status === 200) { const c = await caches.open(CACHE); c.put(req, res.clone()); }
       return res;
-    }).catch(() => cached);
-    return cached || network;
+    } catch (_) {
+      return (await caches.match(req)) || Response.error();
+    }
   })());
 });

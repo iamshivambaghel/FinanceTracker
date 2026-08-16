@@ -248,6 +248,23 @@ code { background: var(--panel-2); padding: 2px 6px; border-radius: 5px; font-si
 .backup-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 .file-label { cursor: pointer; display: inline-flex; align-items: center; }
 
+/* quick add */
+.quick-form { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+.quick-form input { font-size: 15px; }
+
+/* this-month checklist */
+.tm-progress { height: 12px; background: var(--panel-2); border-radius: 7px; overflow: hidden; margin-bottom: 7px; }
+.tm-progress-fill { height: 100%; background: linear-gradient(90deg, var(--credit), #56d17a); border-radius: 7px; transition: width 0.25s; }
+.tm-progress-meta { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); margin-bottom: 12px; }
+.tm-list { display: flex; flex-direction: column; gap: 2px; }
+.tm-row { display: grid; grid-template-columns: 22px 1fr auto auto; align-items: center; gap: 12px; padding: 8px 6px; border-radius: 8px; cursor: pointer; }
+.tm-row:hover { background: var(--panel-2); }
+.tm-name { font-size: 14px; }
+.tm-src { color: var(--muted); font-size: 12px; }
+.tm-amt { font-size: 14px; min-width: 76px; text-align: right; }
+.tm-row.tm-paid .tm-name { text-decoration: line-through; color: var(--muted); }
+.tm-row.tm-paid .tm-amt { color: var(--credit); }
+
 /* cards registry */
 .cards-list { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
 .card-chip { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; font-size: 13px; }

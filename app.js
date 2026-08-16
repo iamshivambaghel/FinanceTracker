@@ -64,6 +64,10 @@ function migrateToCalendar(st) {
     }
     if (it.kind === "onetime" && it.month == null) it.month = oldAnchor;
   });
+  // rename the old card label to match the registered card
+  const RENAME = { "IDFC First Select Card": "IDFC First Millenia Card" };
+  (st.commitments || []).forEach(it => { if (RENAME[it.source]) it.source = RENAME[it.source]; });
+  (st.transactions || []).forEach(t => { if (RENAME[t.source]) t.source = RENAME[t.source]; });
   st.anchorMonth = currentMonth(); // re-anchor to today, every load
 }
 
@@ -112,6 +116,7 @@ function dueThisMonth() { return state.commitments.filter(it => commitmentInMont
 function render() {
   renderSummary();
   renderNetDetail();
+  renderThisMonth();
   renderCashflow();
   renderProjection();
   renderCategories();
@@ -121,6 +126,91 @@ function render() {
   refreshCardSelect();
   renderTable();
   persist();
+}
+
+/* ---------- "This month" dues checklist ---------- */
+function renderThisMonth() {
+  const el = document.getElementById("thismonth");
+  if (!el) return;
+  const lbl = document.getElementById("tm-label");
+  if (lbl) lbl.textContent = monthLabel(0);
+  const due = dueThisMonth().sort((a, b) => b.amount - a.amount);
+  const total = due.reduce((s, it) => s + it.amount, 0);
+  const paid = due.filter(it => isPaid(it.id)).reduce((s, it) => s + it.amount, 0);
+  const pct = total ? (paid / total * 100) : 0;
+  const spends = txnsForPeriod(state.anchorMonth);
+  const spendTotal = spendSum(state.anchorMonth);
+
+  const rows = due.map(it => {
+    const p = isPaid(it.id);
+    return `<label class="tm-row ${p ? "tm-paid" : ""}">
+      <input type="checkbox" class="paid-box tm-check" data-id="${it.id}" ${p ? "checked" : ""}>
+      <span class="tm-name">${it.name}</span>
+      <span class="tm-src">${it.source}</span>
+      <span class="tm-amt num">${INR(it.amount)}</span></label>`;
+  }).join("") || `<p class="hint">Nothing due this month.</p>`;
+
+  el.innerHTML = `
+    <div class="tm-progress"><div class="tm-progress-fill" style="width:${pct.toFixed(0)}%"></div></div>
+    <div class="tm-progress-meta">
+      <span>Paid <b>${INR(paid)}</b> of ${INR(total)} dues</span>
+      <span class="${total - paid > 0 ? "warn-inline" : "ok-inline"}">${total - paid > 0 ? INR(total - paid) + " left" : "all cleared ✓"}</span>
+    </div>
+    <div class="tm-list">${rows}</div>
+    ${spends.length ? `<p class="hint">Plus <b>${spends.length}</b> logged spend(s) this month totalling <b>${INR(spendTotal)}</b> (see category breakdown below).</p>` : ""}`;
+  el.querySelectorAll(".tm-check").forEach(b => b.onchange = () => togglePaid(b.dataset.id));
+}
+
+/* ---------- quick add ---------- */
+function handleQuickAdd() {
+  const input = document.getElementById("quick-input");
+  const parsed = parseQuickSpend(input.value, state.cards, state.bucketRules);
+  const out = document.getElementById("quick-review");
+  if (!parsed) { out.innerHTML = ""; return; }
+  renderQuickReview(parsed);
+}
+function renderQuickReview(parsed) {
+  const out = document.getElementById("quick-review");
+  const catOptions = [...state.bucketRules.map(r => r.category), "Other"];
+  const cardOptions = `<option value="">Cash / UPI</option>` +
+    state.cards.map(c => `<option value="${c.id}" ${parsed.cardId === c.id ? "selected" : ""}>${c.name}${c.last4 ? " ••" + c.last4 : ""}</option>`).join("");
+  const amountMissing = parsed.amount == null;
+  out.innerHTML = `
+    <div class="parsed">
+      ${amountMissing ? `<div class="warn">How much was it? Enter the amount to save.</div>` : ""}
+      <div class="parsed-grid">
+        <label>Amount ₹ <input id="q-amount" type="number" value="${parsed.amount != null ? parsed.amount : ""}" ${amountMissing ? "autofocus" : ""}></label>
+        <label>What for <input id="q-desc" type="text" value="${(parsed.description || "").replace(/"/g, "&quot;")}"></label>
+        <label>Category <select id="q-cat">${catOptions.map(c => `<option ${parsed.category === c ? "selected" : ""}>${c}</option>`).join("")}</select></label>
+        <label>Paid with <select id="q-card">${cardOptions}</select></label>
+        <label>Direction <select id="q-dir">
+          <option value="debit" ${parsed.direction === "debit" ? "selected" : ""}>Spent</option>
+          <option value="credit" ${parsed.direction === "credit" ? "selected" : ""}>Received / refund</option></select></label>
+      </div>
+      <button id="q-save" class="btn-primary">Save spend</button>
+      <button id="q-cancel" class="btn-ghost">Cancel</button>
+    </div>`;
+  document.getElementById("q-cancel").onclick = () => { out.innerHTML = ""; document.getElementById("quick-input").value = ""; };
+  document.getElementById("q-save").onclick = () => {
+    const amt = parseFloat(document.getElementById("q-amount").value);
+    if (!amt) { document.getElementById("q-amount").focus(); return; }
+    const cardId = document.getElementById("q-card").value;
+    const card = state.cards.find(c => c.id === cardId);
+    state.transactions.push({
+      id: uid(),
+      date: new Date().toISOString().slice(0, 10),
+      merchant: document.getElementById("q-desc").value || "Expense",
+      description: document.getElementById("q-desc").value || "Expense",
+      amount: Math.abs(amt),
+      direction: document.getElementById("q-dir").value,
+      category: document.getElementById("q-cat").value,
+      source: card ? card.name : "Cash / UPI",
+      period: state.anchorMonth,
+    });
+    out.innerHTML = `<div class="ok">Added ✓</div>`;
+    document.getElementById("quick-input").value = "";
+    render();
+  };
 }
 
 /* ---------- cards registry ---------- */
@@ -557,6 +647,7 @@ function importBackup(e) {
 
 /* ---------- wire up ---------- */
 function wireStatic() {
+  document.getElementById("quick-form").addEventListener("submit", e => { e.preventDefault(); handleQuickAdd(); });
   document.getElementById("stmt-parse-file").onclick = handleStatementFile;
   document.getElementById("stmt-parse-text").onclick = handleStatementText;
   document.getElementById("stmt-total").oninput = () => { if (pendingImport) renderImportReview(); };

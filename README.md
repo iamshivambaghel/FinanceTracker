@@ -23,6 +23,11 @@ plain HTML/CSS/JS, so it deploys to Vercel as a static site in one click.
   card is auto-detected, each transaction is auto-bucketed and shown for review,
   reconciled against the stated total, with duplicate detection — nothing saves
   until you confirm.
+- **Quick add** — type a spend in plain language ("spent 1000 at petrol pump",
+  "1.5k myntra on icici") and it extracts the amount, category and card, asks
+  for the amount if it can't find one, and records it in one tap.
+- **"This month" checklist** — a compact top view of everything due this month
+  with paid checkboxes and a progress bar.
 - **Monthly paid checkoff** — tick each EMI/fixed due as you actually pay it;
   a progress line shows "paid ₹X of ₹Y this month", and ticks reset every new
   month so it doubles as your monthly bill checklist.

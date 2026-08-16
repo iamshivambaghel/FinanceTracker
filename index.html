@@ -50,6 +50,21 @@
     <section id="summary" class="summary-grid"></section>
     <section id="net-detail" class="net-detail" style="display:none"></section>
 
+    <section class="panel quick-panel">
+      <h2>⚡ Quick add a spend</h2>
+      <p class="hint">Type it however you like — <em>“spent 1000 at petrol pump”</em>, <em>“250 coffee”</em>, <em>“1.5k myntra on icici”</em>. It works out the amount, category and card; you just confirm.</p>
+      <form id="quick-form" class="quick-form">
+        <input id="quick-input" type="text" placeholder="e.g. spent 1000 at petrol pump" autocomplete="off" />
+        <button type="submit" class="btn-primary">Add</button>
+      </form>
+      <div id="quick-review"></div>
+    </section>
+
+    <section class="panel">
+      <h2>🗓 This month — <span id="tm-label"></span></h2>
+      <div id="thismonth"></div>
+    </section>
+
     <section class="panel">
       <h2>💰 Income vs outflow &amp; savings</h2>
       <div id="cashflow"></div>

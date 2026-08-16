@@ -11,11 +11,11 @@
 
 /* ---- category buckets ---- */
 const DEFAULT_BUCKET_RULES = [
-  { category: "Groceries",     keywords: ["bigbasket", "blinkit", "zepto", "grofers", "dmart", "instamart", "grocery", "supermarket"] },
-  { category: "Food & Dining", keywords: ["swiggy", "zomato", "restaurant", "cafe", "dominos", "mcdonald", "starbucks", "bakery", "pizza", "kfc", "eatery"] },
+  { category: "Groceries",     keywords: ["bigbasket", "blinkit", "zepto", "grofers", "dmart", "instamart", "grocery", "supermarket", "vegetable", "milk", "kirana"] },
+  { category: "Food & Dining", keywords: ["swiggy", "zomato", "restaurant", "cafe", "dominos", "mcdonald", "starbucks", "bakery", "pizza", "kfc", "eatery", "coffee", "tea", "lunch", "dinner", "breakfast", "snack", "juice"] },
   { category: "Shopping",      keywords: ["amazon", "flipkart", "myntra", "ajio", "h&m", "hnm", "zara", "adidas", "nike", "puma", "lifestyle", "shoppers", "reliance trends", "mall", "decathlon", "westside", "bag", "apparel"] },
-  { category: "Travel",        keywords: ["uber", "ola", "rapido", "indigo", "vistara", "spicejet", "air india", "irctc", "flight", "makemytrip", "goibibo", "oyo", "hotel", "railway"] },
-  { category: "Fuel",          keywords: ["petrol", "fuel", "hpcl", "iocl", "bpcl", "indian oil", "shell", "gas station"] },
+  { category: "Travel",        keywords: ["uber", "ola", "rapido", "indigo", "vistara", "spicejet", "air india", "irctc", "flight", "makemytrip", "goibibo", "oyo", "hotel", "railway", "auto", "rickshaw", "cab", "metro", "bus", "taxi", "toll"] },
+  { category: "Fuel",          keywords: ["petrol", "fuel", "hpcl", "iocl", "bpcl", "indian oil", "shell", "gas station", "petrol pump", "diesel"] },
   { category: "Bills & Utilities", keywords: ["electricity", "water bill", "broadband", "jio", "airtel", "vodafone", " vi ", "recharge", "dth", "wifi", "postpaid", "utility"] },
   { category: "Entertainment", keywords: ["netflix", "spotify", "prime video", "hotstar", "bookmyshow", "movie", "pvr", "inox", "youtube premium"] },
   { category: "Health",        keywords: ["pharmacy", "apollo", "hospital", "clinic", "medical", "skin", "dermat", "medplus", "1mg", "pharmeasy"] },
@@ -30,6 +30,61 @@ function categorize(description, rules) {
     if (r.keywords.some(k => d.includes(k.toLowerCase()))) return r.category;
   }
   return "Other";
+}
+
+/*
+ * Quick-add parser for casual, free-text spends like:
+ *   "spent 1000 at petrol pump"   "250 coffee"   "1.5k myntra on icici"
+ *   "got 500 refund from amazon"  "paid 80 auto"
+ * Extracts amount (supports k / lakh and Rs/₹), a description, an auto-bucket,
+ * direction, and the card if one is named. Returns confident:false when it
+ * can't find an amount, so the UI can ask.
+ */
+function parseQuickSpend(text, cards, rules) {
+  if (!text || !text.trim()) return null;
+  const raw = text.trim();
+
+  // Detect the card first, then strip its mentions so its last-4 isn't read as
+  // the amount and its name isn't read as the merchant.
+  const card = detectCardFromText(raw, cards);
+  let t = raw;
+  if (card) {
+    if (card.last4) t = t.replace(new RegExp("\\b" + card.last4 + "\\b", "g"), " ");
+    const kw = (card.name.toLowerCase().match(/icici|sbi|idfc|hdfc|axis|kotak|amex|indigo|millenia/) || [])[0];
+    if (kw) t = t.replace(new RegExp("\\b" + kw + "\\b", "ig"), " ");
+    t = t.replace(/\b(on|with|via|using)\s+card\b/ig, " ").replace(/\bcard\b/ig, " ");
+  }
+  t = t.replace(/\s+/g, " ").trim();
+
+  let amount = null;
+  const m = t.match(/(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d+)?)\s*(k|l|lakh|lac)?/i)
+         || t.match(/\b([\d,]+(?:\.\d+)?)\s*(k|l|lakh|lac)?\b/i);
+  if (m) {
+    amount = parseFloat(m[1].replace(/,/g, ""));
+    const suf = (m[2] || "").toLowerCase();
+    if (suf === "k") amount *= 1000;
+    else if (suf) amount *= 100000; // l / lakh / lac
+  }
+
+  const credit = /\b(received|refund|refunded|credited|cashback|got back|returned)\b/i.test(raw);
+
+  let desc = null;
+  const dm = t.match(/\b(?:at|for|on|to|from)\s+([a-z0-9].*)$/i);
+  if (dm) desc = dm[1];
+  else desc = t.replace(m ? m[0] : "", "")
+              .replace(/\b(spent|spend|paid|pay|bought|buy|purchase[d]?|gave|sent|debited|got|rs\.?|inr|₹)\b/ig, "");
+  desc = (desc || "")
+    .replace(/\b(on|at|for|to|from|with|via|using)\s*$/i, "")
+    .replace(/\s+/g, " ").replace(/^[-–:,\s]+|[-–:,\s]+$/g, "").trim() || "Expense";
+
+  const category = categorize(desc + " " + raw, rules);
+
+  return {
+    amount, description: desc, category,
+    direction: credit ? "credit" : "debit",
+    cardId: card ? card.id : null,
+    raw, confident: amount != null,
+  };
 }
 
 /* ---- detect which registered card a statement belongs to ---- */
@@ -131,5 +186,5 @@ function verifyImport(parsed, existingTxns, statedTotal) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { DEFAULT_BUCKET_RULES, categorize, detectCardFromText, extractPdfText, parseStatementText, verifyImport };
+  module.exports = { DEFAULT_BUCKET_RULES, categorize, parseQuickSpend, detectCardFromText, extractPdfText, parseStatementText, verifyImport };
 }

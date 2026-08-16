@@ -26,8 +26,8 @@ const SEED = {
     { id: "idfc-car-ins",    source: "IDFC Indigo Credit Card", name: "Car insurance",         category: "Insurance", kind: "emi",     amount: 1500,  monthsRemaining: 10 },
 
     // ---- IDFC First Select Card ----
-    { id: "idfc-select-last",source: "IDFC First Select Card", name: "Final installment (closing this month)", category: "EMI closeout", kind: "onetime", amount: 13700 },
-    { id: "idfc-flight",     source: "IDFC First Select Card", name: "Flight",                  category: "Travel",    kind: "emi",     amount: 2000,  monthsRemaining: 6 },
+    { id: "idfc-select-last",source: "IDFC First Millenia Card", name: "Final installment (closing this month)", category: "EMI closeout", kind: "onetime", amount: 13700 },
+    { id: "idfc-flight",     source: "IDFC First Millenia Card", name: "Flight",                  category: "Travel",    kind: "emi",     amount: 2000,  monthsRemaining: 6 },
 
     // ---- SBI Credit Card (one-time this month) ----
     { id: "sbi-bag",         source: "SBI Credit Card", name: "Bag",                            category: "Shopping",  kind: "onetime", amount: 7000 },

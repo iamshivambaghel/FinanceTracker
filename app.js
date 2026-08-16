@@ -205,6 +205,11 @@ function renderSavings() {
   const paidOut = paidDuesSince();
   const dep = depositsSince();
   const depList = (state.deposits || []).filter(d => (d.ts || 0) >= sinceTs());
+  // forward look: where the balance lands once expected income arrives and the
+  // remaining this-month dues are paid (card bills excluded — paid next cycle).
+  const unpaidDues = dueThisMonth().filter(it => !isPaid(it.id)).reduce((s, it) => s + it.amount, 0);
+  const expectedIncome = Math.max(totalIncome() - dep, 0);
+  const projected = avail + expectedIncome - unpaidDues;
   el.innerHTML = `
     <div class="sv-head">
       <div>
@@ -225,6 +230,10 @@ function renderSavings() {
       ${dep ? `<span class="pos">+ deposits ${INR(dep)}</span>` : ""}
       ${spent ? `<span class="${spent < 0 ? "neg" : "pos"}">${spent < 0 ? "− cash spends " + INR(-spent) : "+ refunds " + INR(spent)}</span>` : ""}
       ${paidOut ? `<span class="neg">− dues paid ${INR(paidOut)}</span>` : ""}
+    </div>
+    <div class="sv-proj">
+      <span>Projected end of ${monthLabel(0)}: <b class="num ${projected < 0 ? "neg" : "pos"}">${INR(projected)}</b></span>
+      <span class="sv-proj-calc">= now ${INR(avail)}${expectedIncome ? " + expected income " + INR(expectedIncome) : ""}${unpaidDues ? " − unpaid dues " + INR(unpaidDues) : ""}</span>
     </div>
     ${depList.length ? `<div class="sv-deps">${depList.map(d => `<div class="sum-line"><span>${esc(d.label || "Deposit")}</span><span class="num pos">+${INR(d.amount)} <button class="del dep-del" data-id="${d.id}">✕</button></span></div>`).join("")}</div>` : ""}
     <p class="hint">Cash/UPI spends and dues you tick “paid” draw this down. Card spends don't. When salary lands, tap <b>Add</b>.</p>`;

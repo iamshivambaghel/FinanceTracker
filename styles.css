@@ -259,6 +259,8 @@ code { background: var(--panel-2); padding: 2px 6px; border-radius: 5px; font-si
 .sv-set { display: flex; gap: 10px; max-width: 360px; }
 .sv-breakdown { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12.5px; color: var(--muted); margin-top: 10px; }
 .sv-breakdown .pos { color: var(--credit); } .sv-breakdown .neg { color: var(--danger); }
+.sv-proj { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; font-size: 14px; }
+.sv-proj-calc { font-size: 12px; color: var(--muted); }
 .sv-deps { margin-top: 10px; }
 .dep-del { padding: 0 6px; margin-left: 8px; }
 

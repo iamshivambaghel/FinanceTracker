@@ -450,8 +450,19 @@ function wireStatic() {
     const email = document.getElementById("login-email").value.trim();
     const s = document.getElementById("login-status");
     if (!email) { s.textContent = "Enter your email."; return; }
-    try { await Store.signIn(email); s.textContent = "Check your inbox for the magic link ✉️"; }
-    catch (e) { s.textContent = "Error: " + (e.message || e); }
+    try {
+      await Store.signIn(email);
+      document.getElementById("code-entry").style.display = "";
+      s.textContent = "Sent ✉️ — tap the link, or enter the 6-digit code below.";
+    } catch (e) { s.textContent = "Error: " + (e.message || e); }
+  };
+  document.getElementById("verify-btn").onclick = async () => {
+    const email = document.getElementById("login-email").value.trim();
+    const code = document.getElementById("login-code").value.trim();
+    const s = document.getElementById("login-status");
+    if (!code) { s.textContent = "Enter the code from the email."; return; }
+    try { await Store.verifyCode(email, code); s.textContent = "Verified ✓"; }
+    catch (e) { s.textContent = "That code didn't work: " + (e.message || e); }
   };
 }
 

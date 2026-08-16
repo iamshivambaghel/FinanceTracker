@@ -41,6 +41,36 @@ npx serve .        # then open the printed http://localhost:3000
 That alone gives you a private, always-available tracker using this-browser
 storage. To also sync across phone + laptop, add cloud mode below.
 
+## Install it as an iPhone (or Android) app — free, no App Store
+
+FinanceTracker is a **PWA**, so it installs to your home screen with its own
+icon and runs full-screen like a native app:
+
+**iPhone (Safari):** open your deployed URL → tap the **Share** button → **Add to
+Home Screen** → **Add**. Launch it from the new icon — no Safari bars, works
+offline, syncs when online.
+
+**Android (Chrome):** open the URL → menu **⋮** → **Install app**.
+
+### One Supabase tweak for smooth phone login
+Inside an installed app, tapping an email magic-link opens Safari instead of the
+app, so the app also supports a **6-digit code**. To make the code appear in the
+email: Supabase → **Authentication → Email Templates → Magic Link**, and add this
+line to the template body:
+
+```
+Your code: {{ .Token }}
+```
+
+Now the login email carries both a link (great on desktop) and a code (great on
+the installed app — just type it in).
+
+### Want a real App Store build later?
+The web app can be wrapped with [Capacitor](https://capacitorjs.com) into a
+native iOS project, but building/signing it needs a **Mac with Xcode** and an
+**Apple Developer account ($99/yr)** — it can't be produced on Linux/CI alone.
+The PWA above gives you the same day-to-day experience without any of that.
+
 ## Cloud sync across devices (Supabase — free)
 
 1. Create a free project at [supabase.com](https://supabase.com).

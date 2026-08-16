@@ -93,9 +93,15 @@ const Store = (() => {
     if (error) throw error;
   }
 
+  async function verifyCode(email, token) {
+    if (mode !== "cloud") throw new Error("Cloud mode is not configured.");
+    const { error } = await supa.auth.verifyOtp({ email, token: token.trim(), type: "email" });
+    if (error) throw error;
+  }
+
   async function signOut() { if (supa) await supa.auth.signOut(); }
 
-  return { boot, onAuthChange, load, save, signIn, signOut,
+  return { boot, onAuthChange, load, save, signIn, verifyCode, signOut,
     get mode() { return mode; }, get user() { return user; } };
 })();
 

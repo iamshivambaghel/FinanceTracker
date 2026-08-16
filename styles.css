@@ -26,10 +26,15 @@ body {
 /* topbar */
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 20px 28px; border-bottom: 1px solid var(--border);
+  padding: 20px 28px;
+  padding-top: calc(20px + env(safe-area-inset-top));
+  padding-left: calc(28px + env(safe-area-inset-left));
+  padding-right: calc(28px + env(safe-area-inset-right));
+  border-bottom: 1px solid var(--border);
   background: linear-gradient(180deg, #131924, var(--bg));
   position: sticky; top: 0; z-index: 5;
 }
+main { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
 .brand { display: flex; align-items: center; gap: 14px; }
 .logo {
   width: 46px; height: 46px; border-radius: 12px;

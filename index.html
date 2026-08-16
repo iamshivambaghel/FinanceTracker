@@ -2,8 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>FinanceTracker</title>
+
+  <!-- PWA / iOS home-screen app -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#0e1117" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="icons/favicon-32.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Finances" />
+
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -27,8 +38,13 @@
       <div class="logo big">₹</div>
       <h2>Sign in to sync</h2>
       <p class="hint">Enter your email — we'll send a one-tap magic link. Your data then follows you across every device.</p>
-      <input id="login-email" type="email" placeholder="you@email.com" />
-      <button id="login-btn" class="btn-primary">Send magic link</button>
+      <input id="login-email" type="email" placeholder="you@email.com" inputmode="email" autocomplete="email" />
+      <button id="login-btn" class="btn-primary">Send login link + code</button>
+      <div id="code-entry" style="display:none">
+        <p class="hint">On your phone, enter the 6-digit code from the email (more reliable than the link in an installed app):</p>
+        <input id="login-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" />
+        <button id="verify-btn" class="btn-primary">Verify code</button>
+      </div>
       <p id="login-status" class="hint"></p>
     </div>
   </section>
@@ -128,6 +144,11 @@
     </footer>
   </main>
 
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+    }
+  </script>
   <script src="config.js"></script>
   <script src="data.js"></script>
   <script src="parser.js"></script>

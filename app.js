@@ -18,6 +18,7 @@ async function hydrate() {
   if (!state.income) state.income = [];
   if (!state.transactions) state.transactions = [];
   if (!state.bucketRules) state.bucketRules = DEFAULT_BUCKET_RULES;
+  migrateToCalendar(state);
   document.getElementById("auth-gate").style.display = "none";
   document.getElementById("app").style.display = "";
   renderAuthGate();
@@ -25,20 +26,59 @@ async function hydrate() {
 }
 function persist() { if (state) Store.save(state); }
 
+/* ---------- month math (calendar-aware) ---------- */
+function currentMonth() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+function addMonths(ym, n) {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+function monthDiff(a, b) { // whole months from a to b (b - a)
+  const [ay, am] = a.split("-").map(Number), [by, bm] = b.split("-").map(Number);
+  return (by - ay) * 12 + (bm - am);
+}
+function ymLabel(ym) {
+  const [y, m] = ym.split("-").map(Number);
+  return MONTH_NAMES[m - 1] + " " + String(y).slice(2);
+}
+
+/*
+ * One-time migration from the old fixed-anchor model to an absolute-date model:
+ *   EMI  -> stores endMonth (the month of its last payment)
+ *   one-time -> stores month (the month it was incurred)
+ * After this, anchorMonth is always the real current month, so everything
+ * advances automatically as the calendar moves.
+ */
+function migrateToCalendar(st) {
+  const oldAnchor = st.anchorMonth || currentMonth();
+  (st.commitments || []).forEach(it => {
+    if (it.kind === "emi" && it.endMonth == null) {
+      const mr = it.monthsRemaining != null ? it.monthsRemaining : 1;
+      it.endMonth = addMonths(oldAnchor, mr - 1);
+    }
+    if (it.kind === "onetime" && it.month == null) it.month = oldAnchor;
+  });
+  st.anchorMonth = currentMonth(); // re-anchor to today, every load
+}
+
 /* ---------- helpers ---------- */
 const INR = n => "₹" + Math.round(n).toLocaleString("en-IN");
-function monthLabel(offset) {
-  const [y, m] = state.anchorMonth.split("-").map(Number);
-  const d = new Date(y, m - 1 + offset, 1);
-  return MONTH_NAMES[d.getMonth()] + " " + String(d.getFullYear()).slice(2);
-}
+function monthLabel(offset) { return ymLabel(addMonths(state.anchorMonth, offset)); }
 function uid() { return "t" + Date.now() + Math.floor(Math.random() * 1000); }
+
+/* Payments left on an EMI, counted from the current month (inclusive). */
+function emiRemaining(it) {
+  return it.endMonth ? Math.max(monthDiff(state.anchorMonth, it.endMonth) + 1, 0) : 0;
+}
 
 /* commitments only (planned money out) */
 function commitmentInMonth(item, m) {
   if (item.kind === "fixed") return item.amount;
-  if (item.kind === "onetime") return m === 0 ? item.amount : 0;
-  if (item.kind === "emi") return m < (item.monthsRemaining || 0) ? item.amount : 0;
+  if (item.kind === "onetime") return addMonths(state.anchorMonth, m) === item.month ? item.amount : 0;
+  if (item.kind === "emi") { const rem = emiRemaining(item); return m >= 0 && m < rem ? item.amount : 0; }
   return 0;
 }
 function monthCommitments(m) { return state.commitments.reduce((s, it) => s + commitmentInMonth(it, m), 0); }
@@ -117,7 +157,7 @@ function renderNetDetail() {
   const items = state.commitments;
   const fixed = items.filter(i => i.kind === "fixed").reduce((s, i) => s + i.amount, 0);
   const emi = items.filter(i => i.kind === "emi").reduce((s, i) => s + commitmentInMonth(i, 0), 0);
-  const oneTime = items.filter(i => i.kind === "onetime").reduce((s, i) => s + i.amount, 0);
+  const oneTime = items.filter(i => i.kind === "onetime").reduce((s, i) => s + commitmentInMonth(i, 0), 0);
   const spends = spendSum(state.anchorMonth);
   const net = income - (fixed + emi + oneTime + spends);
   const row = (label, val, sign) => `
@@ -137,7 +177,7 @@ function renderCashflow() {
   const income = totalIncome();
   const fixed = state.commitments.filter(i => i.kind === "fixed").reduce((s, i) => s + i.amount, 0);
   const emi = state.commitments.filter(i => i.kind === "emi").reduce((s, i) => s + commitmentInMonth(i, 0), 0);
-  const oneTime = state.commitments.filter(i => i.kind === "onetime").reduce((s, i) => s + i.amount, 0);
+  const oneTime = state.commitments.filter(i => i.kind === "onetime").reduce((s, i) => s + commitmentInMonth(i, 0), 0);
   const spends = Math.max(spendSum(state.anchorMonth), 0);
   const outflow = fixed + emi + oneTime + spends;
   const scale = Math.max(income, outflow, 1);
@@ -234,14 +274,14 @@ function renderCategories() {
 
 /* ---------- EMI payoff timeline ---------- */
 function renderPayoff() {
-  const emis = state.commitments.filter(i => i.kind === "emi" && (i.monthsRemaining || 0) > 0)
-    .map(i => ({ ...i, remainingTotal: i.amount * i.monthsRemaining }))
-    .sort((a, b) => a.monthsRemaining - b.monthsRemaining);
+  const emis = state.commitments.filter(i => i.kind === "emi" && emiRemaining(i) > 0)
+    .map(i => { const rem = emiRemaining(i); return { ...i, rem, remainingTotal: i.amount * rem }; })
+    .sort((a, b) => a.rem - b.rem);
   const totalRemaining = emis.reduce((s, e) => s + e.remainingTotal, 0);
   const monthlyEmi = emis.reduce((s, e) => s + e.amount, 0);
-  const horizon = Math.max(...emis.map(e => e.monthsRemaining), 1);
+  const horizon = Math.max(...emis.map(e => e.rem), 1);
   const rows = emis.map(e => {
-    const widthPct = (e.monthsRemaining / horizon * 100).toFixed(1);
+    const widthPct = (e.rem / horizon * 100).toFixed(1);
     return `
       <div class="pay-row">
         <div class="pay-name">${e.name}<span class="pay-src">${e.source}</span></div>
@@ -249,9 +289,9 @@ function renderPayoff() {
           <div class="pay-bar" style="width:${widthPct}%">
             <span class="pay-bar-lbl">${INR(e.amount)}/mo</span>
           </div>
-          <span class="pay-end">ends ${monthLabel(e.monthsRemaining - 1)}</span>
+          <span class="pay-end">ends ${ymLabel(e.endMonth)}</span>
         </div>
-        <div class="pay-total num">${INR(e.remainingTotal)}<span class="pay-sub">${e.monthsRemaining} left</span></div>
+        <div class="pay-total num">${INR(e.remainingTotal)}<span class="pay-sub">${e.rem} left</span></div>
       </div>`;
   }).join("");
   document.getElementById("payoff").innerHTML = `
@@ -284,13 +324,20 @@ function renderTable() {
   const commit = [...state.commitments].sort((a, b) =>
     (kindOrder[a.kind] - kindOrder[b.kind]) || (commitmentInMonth(b, 0) - commitmentInMonth(a, 0)));
   const commitRows = commit.map(it => {
-    const thisM = commitmentInMonth(it, 0);
-    let sched = it.kind === "emi" ? `${it.monthsRemaining} left · ends ${monthLabel(it.monthsRemaining - 1)}`
-      : it.kind === "fixed" ? "every month" : "this month only";
-    return `<tr>
+    const activeNow = commitmentInMonth(it, 0) > 0;
+    let sched;
+    if (it.kind === "emi") {
+      const rem = emiRemaining(it);
+      sched = rem > 0 ? `${rem} left · ends ${ymLabel(it.endMonth)}` : `closed ${ymLabel(it.endMonth)}`;
+    } else if (it.kind === "fixed") {
+      sched = "every month";
+    } else {
+      sched = `one-time · ${ymLabel(it.month)}`;
+    }
+    return `<tr class="${activeNow ? "" : "row-dim"}">
       <td>${it.name}</td><td>${it.source}</td>
       <td><span class="pill pill-${it.kind}">${kindLabel[it.kind]}</span></td>
-      <td class="num">${INR(thisM)}</td><td class="sched">${sched}</td><td></td></tr>`;
+      <td class="num">${INR(it.amount)}</td><td class="sched">${sched}</td><td></td></tr>`;
   }).join("");
   const txns = (state.transactions || []).slice().reverse();
   const txnRows = txns.map(t => {
@@ -407,7 +454,11 @@ function handleManualAdd(e) {
   const f = e.target;
   const item = { id: uid(), name: f.name.value.trim() || "Untitled", source: f.source.value.trim() || "Manual",
     category: f.category.value.trim() || "Other", kind: f.kind.value, amount: parseFloat(f.amount.value) || 0 };
-  if (item.kind === "emi") item.monthsRemaining = parseInt(f.months.value) || 1;
+  if (item.kind === "emi") {
+    const months = parseInt(f.months.value) || 1;
+    item.endMonth = addMonths(state.anchorMonth, months - 1); // last payment month
+  }
+  if (item.kind === "onetime") item.month = state.anchorMonth;
   state.commitments.push(item); f.reset();
   document.getElementById("months-wrap").style.display = "none";
   render();

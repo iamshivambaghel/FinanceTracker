@@ -16,9 +16,16 @@ plain HTML/CSS/JS, so it deploys to Vercel as a static site in one click.
   Family, Travel, Food…), combining commitments and imported card spends.
 - **EMI payoff timeline** — every active EMI as a bar running to its final
   payment, plus total EMI debt remaining and your debt-free date.
-- **Statement import** — upload a card statement PDF (or paste its lines); each
-  transaction is auto-bucketed and shown for review, reconciled against the
-  stated total, with duplicate detection — nothing saves until you confirm.
+- **My cards** — register each card by its **last 4 digits only** (never the full
+  number). Uploaded statements are then **auto-matched to the right card**, so
+  imported transactions are routed automatically.
+- **Statement import** — upload a card statement PDF (or paste its lines); the
+  card is auto-detected, each transaction is auto-bucketed and shown for review,
+  reconciled against the stated total, with duplicate detection — nothing saves
+  until you confirm.
+- **Monthly paid checkoff** — tick each EMI/fixed due as you actually pay it;
+  a progress line shows "paid ₹X of ₹Y this month", and ticks reset every new
+  month so it doubles as your monthly bill checklist.
 - **Backup & restore** — export/import your whole dataset as JSON any time.
 
 ## Run it locally

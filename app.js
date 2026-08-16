@@ -18,7 +18,10 @@ async function hydrate() {
   if (!state.income) state.income = [];
   if (!state.transactions) state.transactions = [];
   if (!state.bucketRules) state.bucketRules = DEFAULT_BUCKET_RULES;
+  if (!state.cards) state.cards = SEED.cards ? JSON.parse(JSON.stringify(SEED.cards)) : [];
   migrateToCalendar(state);
+  const periodEl = document.getElementById("stmt-period");
+  if (periodEl && !periodEl.value) periodEl.value = currentMonth();
   document.getElementById("auth-gate").style.display = "none";
   document.getElementById("app").style.display = "";
   renderAuthGate();
@@ -93,6 +96,18 @@ function spendSum(period) {
 }
 function outflowThisMonth() { return monthCommitments(0) + spendSum(state.anchorMonth); }
 
+/* ---------- paid-this-month tracking ---------- */
+function paidKey(id) { return id + "::" + state.anchorMonth; }
+function isPaid(id) { return !!(state.paid && state.paid[paidKey(id)]); }
+function togglePaid(id) {
+  if (!state.paid) state.paid = {};
+  const k = paidKey(id);
+  if (state.paid[k]) delete state.paid[k]; else state.paid[k] = true;
+  render();
+}
+/* commitments actually due this month (active + not one-time-in-past) */
+function dueThisMonth() { return state.commitments.filter(it => commitmentInMonth(it, 0) > 0); }
+
 /* ---------- render orchestrator ---------- */
 function render() {
   renderSummary();
@@ -102,8 +117,34 @@ function render() {
   renderCategories();
   renderPayoff();
   renderBreakdown();
+  renderCards();
+  refreshCardSelect();
   renderTable();
   persist();
+}
+
+/* ---------- cards registry ---------- */
+function renderCards() {
+  const el = document.getElementById("cards-list");
+  if (!el) return;
+  el.innerHTML = (state.cards || []).map(c => `
+    <div class="card-chip">
+      <i class="dot" style="background:${c.color || "var(--accent)"}"></i>
+      <span class="card-chip-name">${c.name}</span>
+      <span class="card-chip-meta">${c.last4 ? "•••• " + c.last4 : c.network || ""}</span>
+      <button class="del card-del" data-id="${c.id}">✕</button>
+    </div>`).join("") || `<p class="hint">No cards yet — add one below.</p>`;
+  el.querySelectorAll(".card-del").forEach(b => b.onclick = () => {
+    state.cards = state.cards.filter(c => c.id !== b.dataset.id); render();
+  });
+}
+function refreshCardSelect() {
+  const sel = document.getElementById("stmt-card");
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">Auto-detect / choose…</option>` +
+    (state.cards || []).map(c => `<option value="${c.id}">${c.name}${c.last4 ? " ••" + c.last4 : ""}</option>`).join("");
+  if (cur) sel.value = cur;
 }
 
 /* ---------- auth ---------- */
@@ -334,10 +375,15 @@ function renderTable() {
     } else {
       sched = `one-time · ${ymLabel(it.month)}`;
     }
-    return `<tr class="${activeNow ? "" : "row-dim"}">
+    const paid = activeNow && isPaid(it.id);
+    const check = activeNow
+      ? `<input type="checkbox" class="paid-box" data-id="${it.id}" ${paid ? "checked" : ""} title="Mark paid for ${monthLabel(0)}">`
+      : "";
+    return `<tr class="${activeNow ? "" : "row-dim"} ${paid ? "row-paid" : ""}">
       <td>${it.name}</td><td>${it.source}</td>
       <td><span class="pill pill-${it.kind}">${kindLabel[it.kind]}</span></td>
-      <td class="num">${INR(it.amount)}</td><td class="sched">${sched}</td><td></td></tr>`;
+      <td class="num">${INR(it.amount)}</td><td class="sched">${sched}</td>
+      <td class="paid-cell">${check}</td></tr>`;
   }).join("");
   const txns = (state.transactions || []).slice().reverse();
   const txnRows = txns.map(t => {
@@ -354,6 +400,20 @@ function renderTable() {
   document.querySelectorAll("#table-body .del").forEach(btn => {
     btn.onclick = () => { state.transactions = state.transactions.filter(t => t.id !== btn.dataset.id); render(); };
   });
+  document.querySelectorAll("#table-body .paid-box").forEach(box => {
+    box.onchange = () => togglePaid(box.dataset.id);
+  });
+
+  // dues progress caption
+  const due = dueThisMonth();
+  const total = due.reduce((s, it) => s + it.amount, 0);
+  const paidAmt = due.filter(it => isPaid(it.id)).reduce((s, it) => s + it.amount, 0);
+  const cap = document.getElementById("dues-progress");
+  if (cap) {
+    const left = total - paidAmt;
+    cap.innerHTML = `<b>${monthLabel(0)}:</b> paid ${INR(paidAmt)} of ${INR(total)} `
+      + `· <span class="${left > 0 ? "warn-inline" : "ok-inline"}">${left > 0 ? INR(left) + " still to pay" : "all cleared ✓"}</span>`;
+  }
 }
 
 /* ---------- statement import ---------- */
@@ -373,6 +433,7 @@ async function handleStatementFile() {
         text = await extractPdfText(file, pw);
       } else throw e;
     }
+    applyCardDetection(text);
     finishParse(parseStatementText(text, state.bucketRules));
   } catch (e) {
     status.textContent = "Couldn't read that PDF (" + (e.message || e) + "). Try the paste-text box instead.";
@@ -381,7 +442,20 @@ async function handleStatementFile() {
 function handleStatementText() {
   const text = document.getElementById("stmt-text").value;
   if (!text.trim()) { document.getElementById("import-status").textContent = "Paste some statement lines first."; return; }
+  applyCardDetection(text);
   finishParse(parseStatementText(text, state.bucketRules));
+}
+/* Auto-pick the matching card and show what was detected. */
+function applyCardDetection(text) {
+  const note = document.getElementById("card-detected");
+  const sel = document.getElementById("stmt-card");
+  const match = detectCardFromText(text, state.cards);
+  if (match) {
+    sel.value = match.id;
+    if (note) note.innerHTML = `✓ detected <b>${match.name}</b>${match.last4 ? " ••" + match.last4 : ""}`;
+  } else if (note) {
+    note.textContent = "couldn't auto-detect — pick the card above";
+  }
 }
 function finishParse(rows) {
   const status = document.getElementById("import-status");
@@ -435,7 +509,9 @@ function renderImportReview() {
   document.getElementById("cancel-import").onclick = () => { pendingImport = null; renderImportReview(); };
   document.getElementById("confirm-import").onclick = () => {
     const period = document.getElementById("stmt-period").value || state.anchorMonth;
-    const source = document.getElementById("stmt-source").value.trim() || "Card statement";
+    const cardId = document.getElementById("stmt-card").value;
+    const card = (state.cards || []).find(c => c.id === cardId);
+    const source = card ? card.name : "Card statement";
     pendingImport.forEach(t => state.transactions.push({
       id: uid(), date: t.date, merchant: t.description, description: t.description,
       amount: Math.abs(t.amount), direction: t.direction, category: t.category, source, period,
@@ -484,6 +560,18 @@ function wireStatic() {
   document.getElementById("stmt-parse-file").onclick = handleStatementFile;
   document.getElementById("stmt-parse-text").onclick = handleStatementText;
   document.getElementById("stmt-total").oninput = () => { if (pendingImport) renderImportReview(); };
+  document.getElementById("card-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const f = e.target;
+    const last4 = (f.last4.value.match(/\d/g) || []).join("").slice(-4);
+    const palette = ["#4f8cff","#7c5cff","#f0883e","#3fb950","#e3b341","#f85149","#56d1c9","#d16ba5"];
+    state.cards.push({
+      id: "card-" + uid(), name: f.name.value.trim() || "Card",
+      network: f.network.value.trim(), last4,
+      color: palette[state.cards.length % palette.length],
+    });
+    f.reset(); render();
+  });
   document.getElementById("manual-form").addEventListener("submit", handleManualAdd);
   document.querySelector('#manual-form select[name="kind"]').addEventListener("change", e => {
     document.getElementById("months-wrap").style.display = e.target.value === "emi" ? "block" : "none";

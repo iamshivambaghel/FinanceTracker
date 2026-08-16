@@ -77,12 +77,24 @@
     </section>
 
     <section class="panel">
+      <h2>💳 My cards</h2>
+      <p class="hint">Only the last 4 digits are stored (never full numbers). Uploaded statements are matched to these automatically.</p>
+      <div id="cards-list" class="cards-list"></div>
+      <form id="card-form" class="card-form">
+        <input name="name" type="text" placeholder="Card name (e.g. Axis Magnus)" required>
+        <input name="last4" type="text" inputmode="numeric" maxlength="4" pattern="\d{4}" placeholder="Last 4">
+        <input name="network" type="text" placeholder="Network (Visa…)">
+        <button type="submit" class="btn-primary">Add card</button>
+      </form>
+    </section>
+
+    <section class="panel">
       <h2>📄 Import a credit-card statement</h2>
       <p class="hint">Upload the statement PDF (or paste its transaction lines). Every row is auto-bucketed and shown for your review — nothing is saved until you confirm. Optionally enter the statement's total to auto-verify the parse.</p>
       <div class="import-controls">
         <label>Statement PDF <input id="stmt-file" type="file" accept="application/pdf,.pdf"></label>
-        <label>Which card? <input id="stmt-source" type="text" placeholder="e.g. ICICI Credit Card"></label>
-        <label>Statement period <input id="stmt-period" type="month" value="2026-08"></label>
+        <label>Card <select id="stmt-card"></select><span id="card-detected" class="detected"></span></label>
+        <label>Statement period <input id="stmt-period" type="month"></label>
         <label>Total amount due (₹, optional) <input id="stmt-total" type="number" placeholder="reconcile against this"></label>
       </div>
       <div class="import-actions">
@@ -100,12 +112,14 @@
 
     <section class="panel">
       <h2>All commitments &amp; recorded spends</h2>
+      <p id="dues-progress" class="hint"></p>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Item</th><th>Source</th><th>Type</th><th class="num">Amount</th><th>Schedule / date</th><th></th></tr></thead>
+          <thead><tr><th>Item</th><th>Source</th><th>Type</th><th class="num">Amount</th><th>Schedule / date</th><th>Paid?</th></tr></thead>
           <tbody id="table-body"></tbody>
         </table>
       </div>
+      <p class="hint">Tick a row when you've actually paid that month's due. Ticks reset automatically each new month, so it's your monthly checklist.</p>
     </section>
 
     <section class="panel">

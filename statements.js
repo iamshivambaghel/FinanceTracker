@@ -32,6 +32,25 @@ function categorize(description, rules) {
   return "Other";
 }
 
+/* ---- detect which registered card a statement belongs to ---- */
+function detectCardFromText(text, cards) {
+  if (!text || !cards || !cards.length) return null;
+  const t = text.toLowerCase();
+  // 1) strongest signal: the card's last 4 digits appear in the statement
+  for (const c of cards) {
+    if (c.last4 && new RegExp("(?:x|\\*|ending|no\\.?|card)\\D{0,8}" + c.last4 + "\\b", "i").test(t)) return c;
+  }
+  for (const c of cards) {
+    if (c.last4 && new RegExp("\\b" + c.last4 + "\\b").test(t)) return c;
+  }
+  // 2) fallback: the bank word from the card name appears (ICICI, SBI, IDFC, HDFC…)
+  for (const c of cards) {
+    const kw = (c.name.toLowerCase().match(/icici|sbi|idfc|hdfc|axis|kotak|amex|indigo|millenia/) || [])[0];
+    if (kw && t.includes(kw)) return c;
+  }
+  return null;
+}
+
 /* ---- PDF text extraction (dynamic import so local file:// use still works) ---- */
 async function extractPdfText(file, password) {
   const pdfjs = await import("https://esm.sh/pdfjs-dist@4.7.76/build/pdf.min.mjs");
@@ -112,5 +131,5 @@ function verifyImport(parsed, existingTxns, statedTotal) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { DEFAULT_BUCKET_RULES, categorize, extractPdfText, parseStatementText, verifyImport };
+  module.exports = { DEFAULT_BUCKET_RULES, categorize, detectCardFromText, extractPdfText, parseStatementText, verifyImport };
 }

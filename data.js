@@ -45,6 +45,17 @@ const SEED = {
     { id: "fix-home",        source: "Family", name: "Money sent home",                         category: "Family",    kind: "fixed",   amount: 20000 },
   ],
 
+  // Registered cards — used to auto-route uploaded statements to the right card.
+  // SECURITY: store the LAST 4 DIGITS ONLY, never the full card number. The
+  // last 4 is what bank statements/SMS reference, and it's all matching needs.
+  cards: [
+    { id: "card-idfc-indigo",   name: "IDFC Indigo Credit Card",   network: "Mastercard", last4: "7173", color: "#4f8cff" },
+    { id: "card-idfc-millenia", name: "IDFC First Millenia Card",  network: "Visa",       last4: "7875", color: "#7c5cff" },
+    { id: "card-icici",         name: "ICICI Credit Card",         network: "Mastercard", last4: "5009", color: "#f0883e" },
+    { id: "card-sbi",           name: "SBI Credit Card",           network: "Mastercard", last4: "9901", color: "#3fb950" },
+    { id: "card-hdfc-savein",   name: "HDFC (SaveIN EMI)",         network: "EMI financing", last4: "",  color: "#e3b341" },
+  ],
+
   // Monthly income sources. Add yours in the app (or here). Each pays every month.
   //   e.g. { id: "salary", name: "Salary (take-home)", amount: 200000 }
   income: [],

@@ -69,6 +69,36 @@ main { max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; }
 .panel h2 { margin: 0 0 14px; font-size: 15px; font-weight: 600; color: #cdd7e2; }
 .hint { color: var(--muted); font-size: 13px; margin: 6px 0 12px; }
 
+/* net colors on summary cards */
+.card.pos .card-value { color: var(--credit); }
+.card.neg .card-value { color: var(--danger); }
+
+/* cashflow comparison */
+.cf-bar-row { display: grid; grid-template-columns: 70px 1fr 90px; align-items: center; gap: 12px; margin-bottom: 10px; }
+.cf-bar-label { font-size: 13px; color: var(--muted); }
+.cf-bar { display: flex; height: 20px; background: var(--panel-2); border-radius: 6px; overflow: hidden; }
+.cf-bar-val { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+.seg { height: 100%; }
+.seg-income { background: linear-gradient(90deg, var(--credit), #56d17a); }
+.seg-fixed { background: #7c5cff; }
+.seg-emi { background: var(--accent); }
+.seg-one { background: #bcd98a; }
+.cf-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--muted); margin: 6px 0 4px; }
+.cf-legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+.cf-legend i.seg-fixed { background: #7c5cff; }
+.cf-legend i.seg-emi { background: var(--accent); }
+.cf-legend i.seg-one { background: #bcd98a; }
+
+/* income editor */
+.inc-editor { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
+.inc-list { margin-bottom: 10px; }
+.inc-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.inc-name { font-size: 14px; }
+.inc-amt { color: var(--credit); font-size: 14px; }
+.inc-del { padding: 1px 7px; }
+.inc-form { display: grid; grid-template-columns: 1fr 140px auto; gap: 10px; align-items: center; }
+@media (max-width: 560px) { .inc-form { grid-template-columns: 1fr 1fr; } .inc-form button { grid-column: 1 / -1; } }
+
 /* projection chart */
 .bar-val { fill: var(--muted); font-size: 10px; text-anchor: middle; }
 .bar-lbl { fill: var(--muted); font-size: 10px; text-anchor: middle; }

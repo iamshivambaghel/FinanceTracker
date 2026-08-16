@@ -45,6 +45,10 @@ const SEED = {
     { id: "fix-home",        source: "Family", name: "Money sent home",                         category: "Family",    kind: "fixed",   amount: 20000 },
   ],
 
+  // Monthly income sources. Add yours in the app (or here). Each pays every month.
+  //   e.g. { id: "salary", name: "Salary (take-home)", amount: 200000 }
+  income: [],
+
   // Ad-hoc transactions captured via the parser / manual add land here.
   transactions: [],
 };

@@ -15,8 +15,10 @@ machine.
 
 ## What it shows
 
-- **Due this month** — your total outflow for the current month, plus a
-  breakdown into fixed / EMI / one-time.
+- **Income, Net & Savings rate** — add your monthly income source(s) and the
+  dashboard shows your net cash flow (surplus/shortfall) and what % of income
+  you keep. An income-vs-outflow bar breaks spending into fixed / EMI / one-time.
+- **Due this month** — your total outflow for the current month.
 - **12-month forecast** — a bar chart of what you'll pay each month; the bars
   shrink automatically as EMIs finish.
 - **By card / source** — how much each card (ICICI, IDFC, SBI, HDFC…) and each

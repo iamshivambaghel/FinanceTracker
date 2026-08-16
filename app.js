@@ -440,29 +440,39 @@ function wireStatic() {
   document.getElementById("months-wrap").style.display = "none";
   document.getElementById("export-btn").onclick = exportBackup;
   document.getElementById("import-file").addEventListener("change", importBackup);
+  const savedTheme = localStorage.getItem("ft.theme");
+  if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
   document.getElementById("theme-btn").onclick = () => {
     const root = document.documentElement;
     const cur = root.getAttribute("data-theme");
     const isDark = cur ? cur === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
-    root.setAttribute("data-theme", isDark ? "light" : "dark");
+    const next = isDark ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    localStorage.setItem("ft.theme", next);
   };
+  const creds = () => ({
+    email: document.getElementById("login-email").value.trim(),
+    password: document.getElementById("login-password").value,
+    s: document.getElementById("login-status"),
+  });
   document.getElementById("login-btn").onclick = async () => {
-    const email = document.getElementById("login-email").value.trim();
-    const s = document.getElementById("login-status");
-    if (!email) { s.textContent = "Enter your email."; return; }
-    try {
-      await Store.signIn(email);
-      document.getElementById("code-entry").style.display = "";
-      s.textContent = "Sent ✉️ — tap the link, or enter the 6-digit code below.";
-    } catch (e) { s.textContent = "Error: " + (e.message || e); }
+    const { email, password, s } = creds();
+    if (!email || !password) { s.textContent = "Enter your email and password."; return; }
+    s.textContent = "Signing in…";
+    try { await Store.signInPassword(email, password); s.textContent = "Signed in ✓"; }
+    catch (e) { s.textContent = /invalid/i.test(e.message || "") ? "Wrong email or password. (New here? Tap ‘Create account’.)" : "Error: " + (e.message || e); }
   };
-  document.getElementById("verify-btn").onclick = async () => {
-    const email = document.getElementById("login-email").value.trim();
-    const code = document.getElementById("login-code").value.trim();
-    const s = document.getElementById("login-status");
-    if (!code) { s.textContent = "Enter the code from the email."; return; }
-    try { await Store.verifyCode(email, code); s.textContent = "Verified ✓"; }
-    catch (e) { s.textContent = "That code didn't work: " + (e.message || e); }
+  document.getElementById("signup-btn").onclick = async () => {
+    const { email, password, s } = creds();
+    if (!email || !password) { s.textContent = "Enter an email and a password to create your account."; return; }
+    if (password.length < 6) { s.textContent = "Use a password of at least 6 characters."; return; }
+    s.textContent = "Creating account…";
+    try {
+      const { needsConfirm } = await Store.signUpPassword(email, password);
+      s.textContent = needsConfirm
+        ? "Account created — but email confirmation is ON. Turn it OFF in Supabase (Auth → Sign In → Email) to sign in without email, then sign in."
+        : "Account created ✓ — you're in.";
+    } catch (e) { s.textContent = "Error: " + (e.message || e); }
   };
 }
 

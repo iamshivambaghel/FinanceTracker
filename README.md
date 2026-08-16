@@ -52,18 +52,13 @@ offline, syncs when online.
 
 **Android (Chrome):** open the URL → menu **⋮** → **Install app**.
 
-### One Supabase tweak for smooth phone login
-Inside an installed app, tapping an email magic-link opens Safari instead of the
-app, so the app also supports a **6-digit code**. To make the code appear in the
-email: Supabase → **Authentication → Email Templates → Magic Link**, and add this
-line to the template body:
-
-```
-Your code: {{ .Token }}
-```
-
-Now the login email carries both a link (great on desktop) and a code (great on
-the installed app — just type it in).
+### Login uses email + password (no email round-trip)
+The app signs in with an **email and password** — nothing is emailed, so it works
+instantly inside the installed home-screen app (where magic links fail, because
+tapping the link opens Safari, not the app). One-time Supabase setting to make
+this frictionless: **Authentication → Sign In / Providers → Email → turn OFF
+"Confirm email"**. Then just tap **Create account** once, and sign in with those
+credentials on every device.
 
 ### Want a real App Store build later?
 The web app can be wrapped with [Capacitor](https://capacitorjs.com) into a
@@ -83,10 +78,11 @@ The PWA above gives you the same day-to-day experience without any of that.
      SUPABASE_ANON_KEY: "eyJhbGc...your-anon-key...",
    };
    ```
-5. In Supabase **Authentication → URL Configuration**, add your Vercel URL to
-   the allowed redirect URLs (so the email magic link returns to your app).
-6. Commit & redeploy. The app now asks for your email, sends a one-tap magic
-   link, and syncs your data to every device you sign in on.
+5. In Supabase **Authentication → Sign In / Providers → Email**, turn **off
+   "Confirm email"** (so you can sign in without any email step — ideal for the
+   installed app).
+6. Commit & redeploy. Tap **Create account** once with an email + password, and
+   sign in with those on every device — your data syncs across all of them.
 
 The anon key is designed to be public; Row Level Security (in the schema) means
 each user can only ever touch their own row.

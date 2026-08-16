@@ -39,12 +39,9 @@
       <h2>Sign in to sync</h2>
       <p class="hint">Enter your email — we'll send a one-tap magic link. Your data then follows you across every device.</p>
       <input id="login-email" type="email" placeholder="you@email.com" inputmode="email" autocomplete="email" />
-      <button id="login-btn" class="btn-primary">Send login link + code</button>
-      <div id="code-entry" style="display:none">
-        <p class="hint">On your phone, enter the 6-digit code from the email (more reliable than the link in an installed app):</p>
-        <input id="login-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" />
-        <button id="verify-btn" class="btn-primary">Verify code</button>
-      </div>
+      <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" />
+      <button id="login-btn" class="btn-primary">Sign in</button>
+      <button id="signup-btn" class="btn-ghost">First time? Create account</button>
       <p id="login-status" class="hint"></p>
     </div>
   </section>

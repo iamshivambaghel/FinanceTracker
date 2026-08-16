@@ -1,16 +1,40 @@
 :root {
-  --bg: #0e1117;
-  --panel: #161b22;
-  --panel-2: #1c2230;
-  --border: #2a3140;
-  --text: #e6edf3;
-  --muted: #8b98a9;
-  --accent: #4f8cff;
-  --accent-2: #2ea043;
-  --bar: #37415a;
-  --credit: #3fb950;
-  --danger: #f85149;
+  /* light palette (default) */
+  --bg: #eef2f8;
+  --panel: #ffffff;
+  --panel-2: #f2f5fa;
+  --border: #dde4ef;
+  --text: #16202e;
+  --muted: #5c6b7f;
+  --heading: #33445a;
+  --accent: #3b6fe0;
+  --accent-2: #7c5cff;
+  --bar: #c3d0e6;
+  --credit: #1a9c4e;
+  --danger: #d33a34;
+  --topbar-bg: linear-gradient(180deg, #ffffff, #f4f7fc);
+  --hero-grad: linear-gradient(135deg, #e7effe, #eef2ff);
+  --hero-border: #b9cdf6;
+  --hero-value: #2a52b8;
   --radius: 14px;
+  --shadow: 0 2px 14px rgba(30,50,90,0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1117; --panel: #161b22; --panel-2: #1c2230; --border: #2a3140;
+    --text: #e6edf3; --muted: #8b98a9; --heading: #cdd7e2; --accent: #4f8cff; --accent-2: #7c5cff;
+    --bar: #37415a; --credit: #3fb950; --danger: #f85149;
+    --topbar-bg: linear-gradient(180deg, #131924, #0e1117);
+    --hero-grad: linear-gradient(135deg, #1b2a4a, #182135); --hero-border: #2f4a7a; --hero-value: #cfe0ff;
+    --shadow: 0 4px 20px rgba(0,0,0,0.35);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1117; --panel: #161b22; --panel-2: #1c2230; --border: #2a3140;
+  --text: #e6edf3; --muted: #8b98a9; --heading: #cdd7e2; --accent: #4f8cff; --accent-2: #7c5cff;
+  --bar: #37415a; --credit: #3fb950; --danger: #f85149;
+  --topbar-bg: linear-gradient(180deg, #131924, #0e1117);
+  --hero-grad: linear-gradient(135deg, #1b2a4a, #182135); --hero-border: #2f4a7a; --hero-value: #cfe0ff;
   --shadow: 0 4px 20px rgba(0,0,0,0.35);
 }
 
@@ -31,7 +55,7 @@ body {
   padding-left: calc(28px + env(safe-area-inset-left));
   padding-right: calc(28px + env(safe-area-inset-right));
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, #131924, var(--bg));
+  background: var(--topbar-bg);
   position: sticky; top: 0; z-index: 5;
 }
 main { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
@@ -56,12 +80,12 @@ main { max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; }
   padding: 18px 20px; box-shadow: var(--shadow);
 }
 .card-hero {
-  background: linear-gradient(135deg, #1b2a4a, #182135);
-  border-color: #2f4a7a;
+  background: var(--hero-grad);
+  border-color: var(--hero-border);
 }
 .card-label { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
 .card-value { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
-.card-hero .card-value { font-size: 32px; color: #cfe0ff; }
+.card-hero .card-value { font-size: 32px; color: var(--hero-value); }
 .card-sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
 
 /* panels */
@@ -71,7 +95,7 @@ main { max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; }
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 20px 22px; margin-bottom: 16px; box-shadow: var(--shadow);
 }
-.panel h2 { margin: 0 0 14px; font-size: 15px; font-weight: 600; color: #cdd7e2; }
+.panel h2 { margin: 0 0 14px; font-size: 15px; font-weight: 600; color: var(--heading); }
 .hint { color: var(--muted); font-size: 13px; margin: 6px 0 12px; }
 
 /* net colors on summary cards */
@@ -111,10 +135,10 @@ main { max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; }
 
 /* breakdown */
 .bd-row { display: grid; grid-template-columns: 150px 1fr auto; align-items: center; gap: 12px; margin-bottom: 10px; }
-.bd-name { font-size: 13px; color: #c4cfdb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bd-name { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bd-track { background: var(--panel-2); border-radius: 6px; height: 12px; overflow: hidden; }
 .bd-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #7c5cff); border-radius: 6px; }
-.bd-val { font-size: 13px; font-variant-numeric: tabular-nums; color: #dfe7f0; min-width: 70px; text-align: right; }
+.bd-val { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--text); min-width: 70px; text-align: right; }
 
 /* table */
 .table-wrap { overflow-x: auto; }

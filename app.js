@@ -460,7 +460,13 @@ function wireStatic() {
     if (!email || !password) { s.textContent = "Enter your email and password."; return; }
     s.textContent = "Signing in…";
     try { await Store.signInPassword(email, password); s.textContent = "Signed in ✓"; }
-    catch (e) { s.textContent = /invalid/i.test(e.message || "") ? "Wrong email or password. (New here? Tap ‘Create account’.)" : "Error: " + (e.message || e); }
+    catch (e) {
+      const m = e.message || String(e);
+      s.textContent = /not confirmed/i.test(m)
+        ? "This account is still pending email confirmation. In Supabase, delete this user (Auth → Users) and turn OFF ‘Confirm email’, then Create account again."
+        : /invalid/i.test(m) ? "Wrong email or password. (New here? Tap ‘Create account’.)"
+        : "Error: " + m;
+    }
   };
   document.getElementById("signup-btn").onclick = async () => {
     const { email, password, s } = creds();

@@ -73,6 +73,8 @@ function migrateToCalendar(st) {
 
 /* ---------- helpers ---------- */
 const INR = n => "₹" + Math.round(n).toLocaleString("en-IN");
+const ESC_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ESC_MAP[c]);
 function monthLabel(offset) { return ymLabel(addMonths(state.anchorMonth, offset)); }
 function uid() { return "t" + Date.now() + Math.floor(Math.random() * 1000); }
 
@@ -107,7 +109,11 @@ function togglePaid(id) {
   if (!state.paid) state.paid = {};
   const k = paidKey(id);
   if (state.paid[k]) delete state.paid[k]; else state.paid[k] = true;
-  render();
+  // Paid state only affects the checklist and the table — skip the full
+  // re-render (charts, summaries) so ticking many boxes stays instant.
+  renderThisMonth();
+  renderTable();
+  persist();
 }
 /* commitments actually due this month (active + not one-time-in-past) */
 function dueThisMonth() { return state.commitments.filter(it => commitmentInMonth(it, 0) > 0); }
@@ -146,8 +152,8 @@ function renderThisMonth() {
     const p = isPaid(it.id);
     return `<label class="tm-row ${p ? "tm-paid" : ""}">
       <input type="checkbox" class="paid-box tm-check" data-id="${it.id}" ${p ? "checked" : ""}>
-      <span class="tm-name">${it.name}</span>
-      <span class="tm-src">${it.source}</span>
+      <span class="tm-name">${esc(it.name)}</span>
+      <span class="tm-src">${esc(it.source)}</span>
       <span class="tm-amt num">${INR(it.amount)}</span></label>`;
   }).join("") || `<p class="hint">Nothing due this month.</p>`;
 
@@ -172,7 +178,7 @@ function renderQuickChips() {
   const el = document.getElementById("quick-chips");
   if (!el) return;
   const cats = [...state.bucketRules.map(r => r.category), "Other"];
-  el.innerHTML = cats.map(c => `<button type="button" class="qchip" data-cat="${c}">${CAT_EMOJI[c] || "🔖"} ${c}</button>`).join("");
+  el.innerHTML = cats.map(c => `<button type="button" class="qchip" data-cat="${esc(c)}">${CAT_EMOJI[c] || "🔖"} ${esc(c)}</button>`).join("");
   el.querySelectorAll(".qchip").forEach(b => b.onclick = () => {
     document.getElementById("quick-input").value = "";
     renderQuickReview({ amount: null, description: b.dataset.cat, category: b.dataset.cat, direction: "debit", cardId: null, raw: "" });
@@ -189,15 +195,15 @@ function renderQuickReview(parsed) {
   const out = document.getElementById("quick-review");
   const catOptions = [...state.bucketRules.map(r => r.category), "Other"];
   const cardOptions = `<option value="">Cash / UPI</option>` +
-    state.cards.map(c => `<option value="${c.id}" ${parsed.cardId === c.id ? "selected" : ""}>${c.name}${c.last4 ? " ••" + c.last4 : ""}</option>`).join("");
+    state.cards.map(c => `<option value="${c.id}" ${parsed.cardId === c.id ? "selected" : ""}>${esc(c.name)}${c.last4 ? " ••" + esc(c.last4) : ""}</option>`).join("");
   const amountMissing = parsed.amount == null;
   out.innerHTML = `
     <div class="parsed">
       ${amountMissing ? `<div class="warn">How much was it? Enter the amount to save.</div>` : ""}
       <div class="parsed-grid">
         <label>Amount ₹ <input id="q-amount" type="number" value="${parsed.amount != null ? parsed.amount : ""}" ${amountMissing ? "autofocus" : ""}></label>
-        <label>What for <input id="q-desc" type="text" value="${(parsed.description || "").replace(/"/g, "&quot;")}"></label>
-        <label>Category <select id="q-cat">${catOptions.map(c => `<option ${parsed.category === c ? "selected" : ""}>${c}</option>`).join("")}</select></label>
+        <label>What for <input id="q-desc" type="text" value="${esc(parsed.description)}"></label>
+        <label>Category <select id="q-cat">${catOptions.map(c => `<option ${parsed.category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></label>
         <label>Paid with <select id="q-card">${cardOptions}</select></label>
         <label>Direction <select id="q-dir">
           <option value="debit" ${parsed.direction === "debit" ? "selected" : ""}>Spent</option>
@@ -238,8 +244,8 @@ function renderCards() {
   el.innerHTML = (state.cards || []).map(c => `
     <div class="card-chip">
       <i class="dot" style="background:${c.color || "var(--accent)"}"></i>
-      <span class="card-chip-name">${c.name}</span>
-      <span class="card-chip-meta">${c.last4 ? "•••• " + c.last4 : c.network || ""}</span>
+      <span class="card-chip-name">${esc(c.name)}</span>
+      <span class="card-chip-meta">${c.last4 ? "•••• " + esc(c.last4) : esc(c.network || "")}</span>
       <button class="del card-del" data-id="${c.id}">✕</button>
     </div>`).join("") || `<p class="hint">No cards yet — add one below.</p>`;
   el.querySelectorAll(".card-del").forEach(b => b.onclick = () => {
@@ -251,7 +257,7 @@ function refreshCardSelect() {
   if (!sel) return;
   const cur = sel.value;
   sel.innerHTML = `<option value="">Auto-detect / choose…</option>` +
-    (state.cards || []).map(c => `<option value="${c.id}">${c.name}${c.last4 ? " ••" + c.last4 : ""}</option>`).join("");
+    (state.cards || []).map(c => `<option value="${c.id}">${esc(c.name)}${c.last4 ? " ••" + esc(c.last4) : ""}</option>`).join("");
   if (cur) sel.value = cur;
 }
 
@@ -265,7 +271,7 @@ function renderAuthGate() {
     return;
   }
   if (Store.user) {
-    badge.innerHTML = `<span class="mode-pill cloud">☁ ${Store.user.email}</span> <button id="signout" class="btn-ghost">Sign out</button>`;
+    badge.innerHTML = `<span class="mode-pill cloud">☁ ${esc(Store.user.email)}</span> <button id="signout" class="btn-ghost">Sign out</button>`;
     document.getElementById("signout").onclick = async () => { await Store.signOut(); location.reload(); };
   } else {
     badge.innerHTML = "";
@@ -327,10 +333,10 @@ function renderCashflow() {
   const fixed = state.commitments.filter(i => i.kind === "fixed").reduce((s, i) => s + i.amount, 0);
   const emi = state.commitments.filter(i => i.kind === "emi").reduce((s, i) => s + commitmentInMonth(i, 0), 0);
   const oneTime = state.commitments.filter(i => i.kind === "onetime").reduce((s, i) => s + commitmentInMonth(i, 0), 0);
-  const spends = Math.max(spendSum(state.anchorMonth), 0);
+  const spends = spendSum(state.anchorMonth);              // raw (refunds subtract), matches the summary card
   const outflow = fixed + emi + oneTime + spends;
   const scale = Math.max(income, outflow, 1);
-  const pct = v => (v / scale * 100).toFixed(1) + "%";
+  const pct = v => (Math.max(v, 0) / scale * 100).toFixed(1) + "%";
   const seg = (v, cls, lbl) => v > 0 ? `<div class="seg seg-${cls}" style="width:${pct(v)}" title="${lbl}: ${INR(v)}"></div>` : "";
   const bars = `
     <div class="cf-bar-row"><div class="cf-bar-label">Income</div>
@@ -345,7 +351,7 @@ function renderCashflow() {
       <span><i class="dot seg-one"></i>One-time ${INR(oneTime)}</span>
       <span><i class="dot seg-spend"></i>Card spends ${INR(spends)}</span></div>`;
   const list = (state.income || []).map(inc => `
-    <div class="inc-row"><span class="inc-name">${inc.name}</span>
+    <div class="inc-row"><span class="inc-name">${esc(inc.name)}</span>
       <span class="inc-amt num">${INR(inc.amount)}</span>
       <button class="del inc-del" data-id="${inc.id}">✕</button></div>`).join("")
     || `<p class="hint">No income added yet — add your take-home pay to unlock the savings rate.</p>`;
@@ -372,7 +378,7 @@ function renderProjection() {
   const months = 12;
   const data = Array.from({ length: months }, (_, m) => ({
     label: monthLabel(m),
-    value: monthCommitments(m) + (m === 0 ? Math.max(spendSum(state.anchorMonth), 0) : 0),
+    value: monthCommitments(m) + (m === 0 ? spendSum(state.anchorMonth) : 0),
   }));
   const income = totalIncome();
   const max = Math.max(...data.map(d => d.value), income, 1);
@@ -415,7 +421,7 @@ function renderCategories() {
   const total = rows.reduce((s, r) => s + r[1], 0) || 1;
   document.getElementById("categories").innerHTML = rows.length ? rows.map(([cat, val], i) => `
     <div class="bd-row">
-      <div class="bd-name"><i class="dot" style="background:${CAT_COLORS[i % CAT_COLORS.length]}"></i>${cat}</div>
+      <div class="bd-name"><i class="dot" style="background:${CAT_COLORS[i % CAT_COLORS.length]}"></i>${esc(cat)}</div>
       <div class="bd-track"><div class="bd-fill" style="width:${(val/rows[0][1]*100).toFixed(1)}%;background:${CAT_COLORS[i % CAT_COLORS.length]}"></div></div>
       <div class="bd-val num">${INR(val)} <span class="pctval">${(val/total*100).toFixed(0)}%</span></div>
     </div>`).join("") : `<p class="hint">No categorised spending yet.</p>`;
@@ -433,7 +439,7 @@ function renderPayoff() {
     const widthPct = (e.rem / horizon * 100).toFixed(1);
     return `
       <div class="pay-row">
-        <div class="pay-name">${e.name}<span class="pay-src">${e.source}</span></div>
+        <div class="pay-name">${esc(e.name)}<span class="pay-src">${esc(e.source)}</span></div>
         <div class="pay-track">
           <div class="pay-bar" style="width:${widthPct}%">
             <span class="pay-bar-lbl">${INR(e.amount)}/mo</span>
@@ -461,7 +467,7 @@ function renderBreakdown() {
   const rows = Object.entries(bySource).sort((a, b) => b[1] - a[1]);
   const max = Math.max(...rows.map(r => r[1]), 1);
   document.getElementById("breakdown").innerHTML = rows.map(([src, val]) => `
-    <div class="bd-row"><div class="bd-name">${src}</div>
+    <div class="bd-row"><div class="bd-name">${esc(src)}</div>
       <div class="bd-track"><div class="bd-fill" style="width:${(val/max*100).toFixed(1)}%"></div></div>
       <div class="bd-val num">${INR(val)}</div></div>`).join("");
 }
@@ -488,20 +494,20 @@ function renderTable() {
       ? `<input type="checkbox" class="paid-box" data-id="${it.id}" ${paid ? "checked" : ""} title="Mark paid for ${monthLabel(0)}">`
       : "";
     return `<tr class="${activeNow ? "" : "row-dim"} ${paid ? "row-paid" : ""}">
-      <td>${it.name}</td><td>${it.source}</td>
+      <td>${esc(it.name)}</td><td>${esc(it.source)}</td>
       <td><span class="pill pill-${it.kind}">${kindLabel[it.kind]}</span></td>
-      <td class="num">${INR(it.amount)}</td><td class="sched">${sched}</td>
+      <td class="num">${INR(it.amount)}</td><td class="sched">${esc(sched)}</td>
       <td class="paid-cell">${check}</td></tr>`;
   }).join("");
   const txns = (state.transactions || []).slice().reverse();
   const txnRows = txns.map(t => {
     const credit = t.direction === "credit";
     return `<tr>
-      <td>${t.merchant || t.description || "Transaction"} <span class="tag">${t.category || "spend"}</span></td>
-      <td>${t.source || "—"}</td>
-      <td><span class="pill pill-spend">Spend · ${t.period || state.anchorMonth}</span></td>
+      <td>${esc(t.merchant || t.description || "Transaction")} <span class="tag">${esc(t.category || "spend")}</span></td>
+      <td>${esc(t.source || "—")}</td>
+      <td><span class="pill pill-spend">Spend · ${esc(t.period || state.anchorMonth)}</span></td>
       <td class="num ${credit ? "credit" : ""}">${credit ? "+" : ""}${INR(Math.abs(t.amount))}</td>
-      <td class="sched">${t.date || ""}</td>
+      <td class="sched">${esc(t.date || "")}</td>
       <td><button class="del" data-id="${t.id}">✕</button></td></tr>`;
   }).join("");
   document.getElementById("table-body").innerHTML = commitRows + txnRows;
@@ -560,7 +566,7 @@ function applyCardDetection(text) {
   const match = detectCardFromText(text, state.cards);
   if (match) {
     sel.value = match.id;
-    if (note) note.innerHTML = `✓ detected <b>${match.name}</b>${match.last4 ? " ••" + match.last4 : ""}`;
+    if (note) note.innerHTML = `✓ detected <b>${esc(match.name)}</b>${match.last4 ? " ••" + esc(match.last4) : ""}`;
   } else if (note) {
     note.textContent = "couldn't auto-detect — pick the card above";
   }
@@ -580,13 +586,13 @@ function renderImportReview() {
   const catOptions = [...state.bucketRules.map(r => r.category), "Other"];
   const rows = pendingImport.map((t, i) => `
     <tr>
-      <td>${t.date}</td>
-      <td><input value="${(t.description||"").replace(/"/g,'&quot;')}" data-i="${i}" data-k="description"></td>
+      <td>${esc(t.date)}</td>
+      <td><input value="${esc(t.description)}" data-i="${i}" data-k="description"></td>
       <td><select data-i="${i}" data-k="direction">
         <option value="debit" ${t.direction==="debit"?"selected":""}>Debit</option>
         <option value="credit" ${t.direction==="credit"?"selected":""}>Credit</option></select></td>
       <td><input type="number" value="${t.amount}" data-i="${i}" data-k="amount" class="num-in"></td>
-      <td><select data-i="${i}" data-k="category">${catOptions.map(c => `<option ${t.category===c?"selected":""}>${c}</option>`).join("")}</select></td>
+      <td><select data-i="${i}" data-k="category">${catOptions.map(c => `<option ${t.category===c?"selected":""}>${esc(c)}</option>`).join("")}</select></td>
       <td><button class="del" data-drop="${i}">✕</button></td>
     </tr>`).join("");
   const recon = v.reconciles === null ? `<span class="mut">no total entered</span>`

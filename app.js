@@ -470,9 +470,17 @@ function wireStatic() {
     try {
       const { needsConfirm } = await Store.signUpPassword(email, password);
       s.textContent = needsConfirm
-        ? "Account created — but email confirmation is ON. Turn it OFF in Supabase (Auth → Sign In → Email) to sign in without email, then sign in."
+        ? "Account created, but ‘Confirm email’ is ON in Supabase. Turn it OFF (Auth → Sign In / Providers → Email), then tap Sign in."
         : "Account created ✓ — you're in.";
-    } catch (e) { s.textContent = "Error: " + (e.message || e); }
+    } catch (e) {
+      const msg = e.message || String(e);
+      if (/already registered|already exists/i.test(msg)) {
+        try { await Store.signInPassword(email, password); s.textContent = "Signed in ✓"; }
+        catch (_) { s.textContent = "That email already has an account, but this password didn't match. Use your existing password."; }
+      } else {
+        s.textContent = "Error: " + msg;
+      }
+    }
   };
 }
 

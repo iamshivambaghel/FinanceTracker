@@ -18,6 +18,6 @@
  * time; see README. Editing this file directly is the simplest path.
  */
 window.FT_CONFIG = {
-  SUPABASE_URL: "",   // e.g. "https://abcdxyz.supabase.co"
-  SUPABASE_ANON_KEY: "",
+  SUPABASE_URL: "https://ljmflcapwdhsxktcmync.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqbWZsY2Fwd2Roc3hrdGNteW5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NTM2MTIsImV4cCI6MjEwMjQyOTYxMn0.wTTG_9QrbjC-VrRMqPFtoNmiSzus_m1s7y1WpfWInKQ",
 };
